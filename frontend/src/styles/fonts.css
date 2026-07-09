@@ -1,0 +1,29 @@
+/**
+ * MOTU Font Loading Strategy — Offline-First
+ *
+ * All fonts loaded locally from /fonts/ directory.
+ * No CDN dependency. Works completely offline.
+ *
+ * - Geist Sans: Variable WOFF2 (56KB)
+ * - Geist Mono: Variable WOFF2 (58KB)
+ *
+ * font-display: swap prevents FOIT (Flash of Invisible Text)
+ */
+
+/* Geist Sans — Primary UI font */
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Geist Mono — Monospace for data/metrics */
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

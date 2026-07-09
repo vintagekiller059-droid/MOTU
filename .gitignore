@@ -1,18 +1,23 @@
-# Python
-backend/venv/
-__pycache__/
-*.pyc
+# OS
+.DS_Store
+Thumbs.db
 
-# Node
-frontend/node_modules/
-frontend/dist/
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
 
 # Environment
-.env
+.env.local
+.env.*.local
 
-# VS Code
-.vscode/
-
-# OS
-Thumbs.db
-.DS_Store
+# MOTU specific
+assets/models/*.gguf
+assets/models/*.bin

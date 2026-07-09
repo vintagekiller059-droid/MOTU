@@ -1,0 +1,80 @@
+:root {
+  --bg-base: #0a0a0f;
+  --bg-surface: rgba(15, 15, 25, 0.7);
+  --bg-glass: rgba(255, 255, 255, 0.03);
+  --bg-glass-hover: rgba(255, 255, 255, 0.06);
+  --bg-glass-active: rgba(255, 255, 255, 0.08);
+  --bg-card: rgba(255, 255, 255, 0.04);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-glow: rgba(0, 255, 170, 0.2);
+  --border-accent: rgba(0, 255, 170, 0.3);
+
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --text-muted: rgba(255, 255, 255, 0.3);
+  --text-dim: rgba(255, 255, 255, 0.15);
+  --text-accent: #00ffaa;
+  --text-accent-dim: rgba(0, 255, 170, 0.5);
+
+  --user-dot: #3b82f6;
+  --ai-dot: #00ffaa;
+
+  --glow-accent: 0 0 20px rgba(0, 255, 170, 0.15);
+  --glow-accent-strong: 0 0 40px rgba(0, 255, 170, 0.25);
+  --glow-core: 0 0 60px rgba(0, 255, 170, 0.1);
+}
+
+[data-theme="light"] {
+  --bg-base: #f5f5f7;
+  --bg-surface: rgba(255, 255, 255, 0.8);
+  --bg-glass: rgba(0, 0, 0, 0.03);
+  --bg-glass-hover: rgba(0, 0, 0, 0.06);
+  --bg-glass-active: rgba(0, 0, 0, 0.08);
+  --bg-card: rgba(0, 0, 0, 0.04);
+
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-glow: rgba(0, 180, 120, 0.3);
+  --border-accent: rgba(0, 180, 120, 0.4);
+
+  --text-primary: rgba(0, 0, 0, 0.9);
+  --text-secondary: rgba(0, 0, 0, 0.5);
+  --text-muted: rgba(0, 0, 0, 0.3);
+  --text-dim: rgba(0, 0, 0, 0.15);
+  --text-accent: #00aa66;
+  --text-accent-dim: rgba(0, 170, 102, 0.5);
+
+  --user-dot: #2563eb;
+  --ai-dot: #00aa66;
+
+  --glow-accent: 0 0 20px rgba(0, 170, 102, 0.15);
+  --glow-accent-strong: 0 0 40px rgba(0, 170, 102, 0.25);
+  --glow-core: 0 0 60px rgba(0, 170, 102, 0.1);
+}
+
+[data-theme="cyberpunk"] {
+  --bg-base: #0a0014;
+  --bg-surface: rgba(20, 0, 40, 0.7);
+  --bg-glass: rgba(255, 0, 255, 0.03);
+  --bg-glass-hover: rgba(255, 0, 255, 0.06);
+  --bg-glass-active: rgba(255, 0, 255, 0.08);
+  --bg-card: rgba(255, 0, 255, 0.04);
+
+  --border-subtle: rgba(255, 0, 255, 0.1);
+  --border-glow: rgba(255, 0, 255, 0.4);
+  --border-accent: rgba(255, 0, 255, 0.5);
+
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(200, 150, 255, 0.6);
+  --text-muted: rgba(150, 100, 200, 0.4);
+  --text-dim: rgba(150, 100, 200, 0.2);
+  --text-accent: #ff00ff;
+  --text-accent-dim: rgba(255, 0, 255, 0.5);
+
+  --user-dot: #00ffff;
+  --ai-dot: #ff00ff;
+
+  --glow-accent: 0 0 20px rgba(255, 0, 255, 0.15);
+  --glow-accent-strong: 0 0 40px rgba(255, 0, 255, 0.25);
+  --glow-core: 0 0 60px rgba(255, 0, 255, 0.1);
+}
