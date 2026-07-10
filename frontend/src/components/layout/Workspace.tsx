@@ -1,4 +1,4 @@
-/**
+ /**
  * Workspace
  *
  * The main content area. Never empty — the AI Core breathes here
@@ -6,8 +6,24 @@
  */
 
 import { AICore } from '../core/AICore'
+import { MessageStream } from '../chat/MessageStream'
+import { InputOrbit } from '../chat/InputOrbit'
+import { useUIStore } from '../../stores/ui-store'
 
 export function Workspace() {
+  const activePanel = useUIStore((s) => s.activePanel)
+
+  if (activePanel === 'chat') {
+    return (
+      <main className="relative z-10 flex flex-1 flex-col overflow-hidden">
+        <MessageStream />
+        <div className="px-6 pb-4">
+          <InputOrbit />
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main
       className="relative z-10 flex flex-1 flex-col items-center justify-center"

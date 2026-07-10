@@ -7,7 +7,6 @@
  * No text labels.
  */
 
-import { useState } from 'react'
 import {
   MessageSquare,
   Brain,
@@ -15,6 +14,7 @@ import {
   Settings,
   Zap,
 } from 'lucide-react'
+import { useUIStore } from '../../stores/ui-store'
 
 const DOCK_ITEMS = [
   { id: 'chat', icon: MessageSquare, label: 'Chat' },
@@ -25,7 +25,8 @@ const DOCK_ITEMS = [
 ] as const
 
 export function FloatingDock() {
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const activeId = useUIStore((s) => s.activePanel)
+  const togglePanel = useUIStore((s) => s.togglePanel)
 
   return (
     <div className="relative z-50 flex items-center justify-center pb-4">
@@ -45,7 +46,7 @@ export function FloatingDock() {
               key={item.id}
               type="button"
               aria-label={item.label}
-              onClick={() => setActiveId(isActive ? null : item.id)}
+              onClick={() => togglePanel(item.id)}
               className="relative flex items-center justify-center transition-all duration-200"
               style={{
                 width: 36,

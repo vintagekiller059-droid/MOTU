@@ -18,7 +18,7 @@ export interface Session {
 export interface ModelInfo {
   name: string
   size: number
-  parameterCount: number
+  parameterCount: string
   format: string
 }
 
@@ -35,4 +35,6 @@ export interface SystemHealth {
   uptime: number
   cpuPercent: number
   memoryPercent: number
+  memoryUsedGb: number
+  ollamaConnected: boolean
 }

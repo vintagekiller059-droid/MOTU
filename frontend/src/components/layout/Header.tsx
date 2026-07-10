@@ -5,7 +5,43 @@
  * No plain text — everything is contained in glass surfaces.
  */
 
+import { useEffect } from 'react'
+import { apiClient } from '../../lib/api-client'
+import { useSystemStore } from '../../stores/system-store'
+
+const POLL_INTERVAL_MS = 5000
+
 export function Header() {
+  const { cpuPercent, ramGb, modelName, connected, ollamaConnected, setHealth, setConnected } =
+    useSystemStore()
+
+  useEffect(() => {
+    let cancelled = false
+
+    const poll = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const health = await apiClient.health()
+        if (cancelled) return
+        setHealth({
+          cpuPercent: health.cpuPercent,
+          ramGb: health.memoryUsedGb,
+          version: health.version,
+          ollamaConnected: health.ollamaConnected,
+        })
+      } catch {
+        if (!cancelled) setConnected(false)
+      }
+    }
+
+    poll()
+    const interval = setInterval(poll, POLL_INTERVAL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [setHealth, setConnected])
+
   return (
     <header
       className="glass relative z-50 flex items-center justify-between px-5"
@@ -37,16 +73,16 @@ export function Header() {
             className="font-mono text-[10px] tracking-wider uppercase"
             style={{ color: 'var(--text-accent-dim)' }}
           >
-            Online
+            {connected ? (ollamaConnected ? 'Online' : 'No Model') : 'Offline'}
           </span>
         </div>
       </div>
 
       {/* Right: Status indicators */}
       <div className="flex items-center gap-3">
-        <StatusBadge label="CPU" value="—%" />
-        <StatusBadge label="RAM" value="—GB" />
-        <StatusBadge label="Model" value="—" />
+        <StatusBadge label="CPU" value={connected ? `${Math.round(cpuPercent)}%` : '—%'} />
+        <StatusBadge label="RAM" value={connected ? `${ramGb.toFixed(1)}GB` : '—GB'} />
+        <StatusBadge label="Model" value={modelName || '—'} />
         <span
           className="font-mono text-xs"
           style={{ color: 'var(--text-dim)' }}

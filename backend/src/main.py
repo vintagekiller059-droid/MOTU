@@ -1,10 +1,19 @@
+import time
+
+import psutil
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from config import settings
+from database.connection import init_db
+from models.schemas import HealthResponse
+from routers import chat, models as models_router, sessions
+from services.ollama_client import ollama_client
 
 app = FastAPI(
     title="MOTU API",
     description="My Own Thinking Unit — Backend API",
-    version="1.0.0",
+    version=settings.app_version,
 )
 
 app.add_middleware(
@@ -15,18 +24,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(chat.router)
+app.include_router(sessions.router)
+app.include_router(models_router.router)
 
-@app.get("/api/v1/health")
+_start_time = time.monotonic()
+
+
+@app.on_event("startup")
+async def on_startup():
+    init_db()
+
+
+@app.get("/api/v1/health", response_model=HealthResponse)
 async def health_check():
-    return {
-        "status": "ok",
-        "version": "1.0.0",
-        "uptime": 0,
-        "cpu_percent": 0.0,
-        "memory_percent": 0.0,
-    }
+    ollama_connected = await ollama_client.is_available()
+    vm = psutil.virtual_memory()
+    return HealthResponse(
+        status="ok",
+        version=settings.app_version,
+        uptime=round(time.monotonic() - _start_time, 1),
+        cpu_percent=psutil.cpu_percent(interval=0.1),
+        memory_percent=vm.percent,
+        memory_used_gb=round(vm.used / (1024**3), 1),
+        ollama_connected=ollama_connected,
+    )
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

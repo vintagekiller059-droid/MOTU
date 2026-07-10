@@ -62,6 +62,8 @@
 
   --color-user-dot: #3b82f6;
   --color-ai-dot: #00ffaa;
+  --color-status-error: #ff5c72;
+  --color-status-error-dim: rgba(255, 92, 114, 0.15);
 
   /* Core Glow */
   --glow-accent: 0 0 20px rgba(0, 255, 170, 0.15);
