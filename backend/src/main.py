@@ -1,7 +1,7 @@
 import time
 
 import psutil
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
@@ -37,7 +37,8 @@ async def on_startup():
 
 
 @app.get("/api/v1/health", response_model=HealthResponse)
-async def health_check():
+async def health_check(response: Response):
+    response.headers["Cache-Control"] = "no-store"
     ollama_connected = await ollama_client.is_available()
     vm = psutil.virtual_memory()
     return HealthResponse(
@@ -46,7 +47,7 @@ async def health_check():
         uptime=round(time.monotonic() - _start_time, 1),
         cpu_percent=psutil.cpu_percent(interval=0.1),
         memory_percent=vm.percent,
-        memory_used_gb=round(vm.used / (1024**3), 1),
+        memory_used_gb=round(vm.used / (1024**3), 2),
         ollama_connected=ollama_connected,
     )
 

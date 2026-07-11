@@ -17,6 +17,7 @@ class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
     ...init,
   })
 
@@ -101,7 +102,7 @@ export const apiClient = {
     request<void>(`/sessions/${sessionId}`, { method: 'DELETE' }),
 
   listModels: () =>
-    request<{ models: ModelInfo[] }>('/models').then((r) => r.models),
+    request<{ models: RawModel[] }>('/models').then((r) => r.models.map(mapModel)),
 }
 
 interface RawSession {
@@ -121,6 +122,22 @@ function mapSession(raw: RawSession): Session {
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
     messageCount: raw.message_count,
+  }
+}
+
+interface RawModel {
+  name: string
+  size: number
+  parameter_count: string
+  format: string
+}
+
+function mapModel(raw: RawModel): ModelInfo {
+  return {
+    name: raw.name,
+    size: raw.size,
+    parameterCount: raw.parameter_count,
+    format: raw.format,
   }
 }
 

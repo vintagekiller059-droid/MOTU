@@ -81,7 +81,7 @@ export function Header() {
       {/* Right: Status indicators */}
       <div className="flex items-center gap-3">
         <StatusBadge label="CPU" value={connected ? `${Math.round(cpuPercent)}%` : '—%'} />
-        <StatusBadge label="RAM" value={connected ? `${ramGb.toFixed(1)}GB` : '—GB'} />
+        <StatusBadge label="RAM" value={connected ? `${ramGb.toFixed(2)}GB` : '—GB'} />
         <StatusBadge label="Model" value={modelName || '—'} />
         <span
           className="font-mono text-xs"

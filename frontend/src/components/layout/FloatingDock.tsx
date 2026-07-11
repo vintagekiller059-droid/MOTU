@@ -4,9 +4,10 @@
  * Glass dock with icon-only buttons.
  * Rounded, blurred, minimal, elegant.
  * Hover scale animation. Active state glow.
- * No text labels.
+ * No text labels — hover/focus tooltips instead.
  */
 
+import { useState } from 'react'
 import {
   MessageSquare,
   Brain,
@@ -27,6 +28,7 @@ const DOCK_ITEMS = [
 export function FloatingDock() {
   const activeId = useUIStore((s) => s.activePanel)
   const togglePanel = useUIStore((s) => s.togglePanel)
+  const [tooltipId, setTooltipId] = useState<string | null>(null)
 
   return (
     <div className="relative z-50 flex items-center justify-center pb-4">
@@ -39,6 +41,7 @@ export function FloatingDock() {
       >
         {DOCK_ITEMS.map((item) => {
           const isActive = activeId === item.id
+          const showTooltip = tooltipId === item.id
           const Icon = item.icon
 
           return (
@@ -52,39 +55,47 @@ export function FloatingDock() {
                 width: 36,
                 height: 36,
                 borderRadius: 12,
-                backgroundColor: isActive
-                  ? 'var(--bg-glass-active)'
-                  : 'transparent',
-                border: isActive
-                  ? '1px solid var(--border-accent)'
-                  : '1px solid transparent',
+                backgroundColor: isActive ? 'var(--bg-glass-active)' : 'transparent',
+                border: isActive ? '1px solid var(--border-accent)' : '1px solid transparent',
                 boxShadow: isActive ? 'var(--glow-accent)' : 'none',
                 transform: isActive ? 'scale(1.1)' : 'scale(1)',
                 transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
               }}
               onMouseEnter={(e) => {
+                setTooltipId(item.id)
                 if (!isActive) {
                   e.currentTarget.style.transform = 'scale(1.15)'
                   e.currentTarget.style.backgroundColor = 'var(--bg-glass-hover)'
                 }
               }}
               onMouseLeave={(e) => {
+                setTooltipId((current) => (current === item.id ? null : current))
                 if (!isActive) {
                   e.currentTarget.style.transform = 'scale(1)'
                   e.currentTarget.style.backgroundColor = 'transparent'
                 }
               }}
+              onFocus={() => setTooltipId(item.id)}
+              onBlur={() => setTooltipId((current) => (current === item.id ? null : current))}
             >
               <Icon
                 size={18}
                 strokeWidth={1.5}
                 style={{
-                  color: isActive
-                    ? 'var(--text-accent)'
-                    : 'var(--text-secondary)',
+                  color: isActive ? 'var(--text-accent)' : 'var(--text-secondary)',
                   transition: 'color 200ms ease-out',
                 }}
               />
+
+              {showTooltip && (
+                <span
+                  role="tooltip"
+                  className="glass-card animate-tooltip-in pointer-events-none absolute bottom-full left-1/2 mb-2 whitespace-nowrap px-2 py-1 font-mono text-[10px]"
+                  style={{ color: 'var(--text-primary)', zIndex: 60 }}
+                >
+                  {item.label}
+                </span>
+              )}
             </button>
           )
         })}

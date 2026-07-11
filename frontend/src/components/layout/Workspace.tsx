@@ -1,44 +1,38 @@
- /**
+/**
  * Workspace
  *
- * The main content area. Never empty — the AI Core breathes here
- * as the ambient visual anchor of the interface.
+ * The main content area. Renders exactly one panel based on activePanel
+ * from ui-store. Never empty — falls back to IdleCore (AI Core ambient
+ * anchor) when no panel is selected.
  */
 
-import { AICore } from '../core/AICore'
-import { MessageStream } from '../chat/MessageStream'
-import { InputOrbit } from '../chat/InputOrbit'
 import { useUIStore } from '../../stores/ui-store'
+import { ChatPanel } from '../panel/ChatPanel'
+import { MemoryPanel } from '../panel/MemoryPanel'
+import { VoicePanel } from '../panel/VoicePanel'
+import { AutomationPanel } from '../panel/AutomationPanel'
+import { SettingsPanel } from '../settings/SettingsPanel'
+import { IdleCore } from '../panel/IdleCore'
 
 export function Workspace() {
   const activePanel = useUIStore((s) => s.activePanel)
 
-  if (activePanel === 'chat') {
-    return (
-      <main className="relative z-10 flex flex-1 flex-col overflow-hidden">
-        <MessageStream />
-        <div className="px-6 pb-4">
-          <InputOrbit />
-        </div>
-      </main>
-    )
+  switch (activePanel) {
+    case 'chat':
+      return <ChatPanel />
+    case 'memory':
+      return <MemoryPanel />
+    case 'voice':
+      return <VoicePanel />
+    case 'automation':
+      return <AutomationPanel />
+    case 'settings':
+      return (
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6">
+          <SettingsPanel />
+        </main>
+      )
+    default:
+      return <IdleCore />
   }
-
-  return (
-    <main
-      className="relative z-10 flex flex-1 flex-col items-center justify-center"
-    >
-      <AICore />
-
-      {/* Subtle tagline below core */}
-      <div className="mt-10 text-center">
-        <p
-          className="font-mono text-xs tracking-[0.25em]"
-          style={{ color: 'var(--text-dim)' }}
-        >
-          COGNITIVE CORE ACTIVE
-        </p>
-      </div>
-    </main>
-  )
 }

@@ -58,6 +58,8 @@ export function InputOrbit() {
 
       {isStreaming ? (
         <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={stopStreaming}
           className="glass-hover flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-gpu"
           style={{ color: 'var(--text-accent)' }}
@@ -67,6 +69,8 @@ export function InputOrbit() {
         </button>
       ) : (
         <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={handleSend}
           disabled={!value.trim()}
           className="glass-hover flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-gpu disabled:opacity-30"
