@@ -1,85 +1,64 @@
-// InputOrbit component
-// Input field that expands on focus — fixed bottom, glass styling
+import React, { useState, useRef } from 'react';
+import { useUIStore } from '../../stores/ui-store';
+import { useSessionStore } from '../../stores/session-store';
+import { CornerDownLeft } from 'lucide-react';
+import { clsx } from 'clsx';
 
-import { useRef, useState } from 'react'
-import { Send, Square } from 'lucide-react'
-import { useStreaming } from '../../hooks/use-streaming'
-import { useSessionStore } from '../../stores/session-store'
-import { useUIStore } from '../../stores/ui-store'
+export const InputOrbit: React.FC = () => {
+  const [input, setInput] = useState('');
+  const { inputFocused, setInputFocused } = useUIStore();
+  const { addMessage, isStreaming } = useSessionStore();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-export function InputOrbit() {
-  const [value, setValue] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isStreaming) return;
 
-  const { sendMessage, stopStreaming } = useStreaming()
-  const isStreaming = useSessionStore((s) => s.isStreaming)
-  const setInputFocused = useUIStore((s) => s.setInputFocused)
-
-  const handleSend = () => {
-    if (!value.trim() || isStreaming) return
-    sendMessage(value)
-    setValue('')
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value)
-    const el = e.target
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
-  }
+    addMessage({
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: input.trim(),
+      created_at: new Date().toISOString(),
+    });
+    setInput('');
+  };
 
   return (
-    <div
-      className="glass flex items-end gap-2 rounded-2xl px-4 py-2.5 transition-gpu"
-      style={{ minHeight: 'var(--input-orbit-height)' }}
-    >
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleInput}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setInputFocused(true)}
-        onBlur={() => setInputFocused(false)}
-        placeholder="Type your message..."
-        rows={1}
-        className="flex-1 resize-none bg-transparent text-sm outline-none"
-        style={{ color: 'var(--text-primary)', maxHeight: 120 }}
-      />
-
-      {isStreaming ? (
+    <div className="w-full max-w-3xl mx-auto px-4 pb-6 shrink-0 z-20">
+      <form 
+        onSubmit={handleSubmit}
+        className={clsx(
+          "w-full rounded-xl transition-all duration-300 flex items-center gap-3 px-4 py-2.5",
+          "border backdrop-blur-xl bg-[#0d0d17]/50",
+          inputFocused 
+            ? "border-brand-cyan/30 shadow-[0_0_20px_rgba(0,242,254,0.06)] bg-[#0d0d17]/80" 
+            : "border-white/[0.04]"
+        )}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
+          placeholder="Interface with MOTU Core..."
+          className="flex-1 bg-transparent border-none outline-none text-slate-100 placeholder-slate-500 text-[13px] font-sans py-1"
+        />
+        
         <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={stopStreaming}
-          className="glass-hover flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-gpu"
-          style={{ color: 'var(--text-accent)' }}
-          aria-label="Stop generating"
+          type="submit"
+          disabled={!input.trim() || isStreaming}
+          className={clsx(
+            "p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center shrink-0",
+            input.trim() && !isStreaming
+              ? "bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan"
+              : "text-slate-600 border border-transparent"
+          )}
         >
-          <Square size={14} fill="currentColor" />
+          <CornerDownLeft className="w-3.5 h-3.5" />
         </button>
-      ) : (
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleSend}
-          disabled={!value.trim()}
-          className="glass-hover flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-gpu disabled:opacity-30"
-          style={{ color: 'var(--text-accent)' }}
-          aria-label="Send message"
-        >
-          <Send size={14} />
-        </button>
-      )}
+      </form>
     </div>
-  )
-}
+  );
+};

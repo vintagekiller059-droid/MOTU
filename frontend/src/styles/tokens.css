@@ -1,72 +1,31 @@
-@import "tailwindcss";
+/* stylelint-disable-next-line */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  /* === MOTU Design System Tokens === */
+@layer base {
+  body {
+    @apply font-sans antialiased text-sm bg-[#0a0a0f] text-slate-300 overflow-hidden h-screen w-screen;
+  }
+}
 
-  /* Typography — Offline-first: Geist Sans + Geist Mono only */
-  --font-sans: "Geist", system-ui, -apple-system, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+/* Premium Glassmorphism guidelines using GPU-composited components */
+.glass-panel {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(13, 13, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
 
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 2rem;
-  --text-4xl: 3rem;
-
-  /* Spacing */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-
-  /* Layout */
-  --status-bar-height: 48px;
-  --info-bar-height: 32px;
-  --input-orbit-height: 56px;
-  --dock-height: 48px;
-
-  /* Animation */
-  --duration-fast: 150ms;
-  --duration-normal: 200ms;
-  --duration-slow: 300ms;
-  --duration-boot: 400ms;
-  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  /* Core Colors (Dark default) */
-  --color-bg-base: #0a0a0f;
-  --color-bg-surface: rgba(15, 15, 25, 0.7);
-  --color-bg-glass: rgba(255, 255, 255, 0.03);
-  --color-bg-glass-hover: rgba(255, 255, 255, 0.06);
-  --color-bg-glass-active: rgba(255, 255, 255, 0.08);
-  --color-bg-card: rgba(255, 255, 255, 0.04);
-
-  --color-border-subtle: rgba(255, 255, 255, 0.06);
-  --color-border-glow: rgba(0, 255, 170, 0.2);
-  --color-border-accent: rgba(0, 255, 170, 0.3);
-
-  --color-text-primary: rgba(255, 255, 255, 0.9);
-  --color-text-secondary: rgba(255, 255, 255, 0.5);
-  --color-text-muted: rgba(255, 255, 255, 0.3);
-  --color-text-dim: rgba(255, 255, 255, 0.15);
-  --color-text-accent: #00ffaa;
-  --color-text-accent-dim: rgba(0, 255, 170, 0.5);
-
-  --color-user-dot: #3b82f6;
-  --color-ai-dot: #00ffaa;
-  --color-status-error: #ff5c72;
-  --color-status-error-dim: rgba(255, 92, 114, 0.15);
-
-  /* Core Glow */
-  --glow-accent: 0 0 20px rgba(0, 255, 170, 0.15);
-  --glow-accent-strong: 0 0 40px rgba(0, 255, 170, 0.25);
-  --glow-core: 0 0 60px rgba(0, 255, 170, 0.1);
+/* Custom micro scrollbar styles */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
 }

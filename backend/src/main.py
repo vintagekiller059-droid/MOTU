@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database.connection import init_db
 from models.schemas import HealthResponse
-from routers import chat, models as models_router, sessions
+from routers import chat, memory as memory_router, models as models_router, sessions
 from services.ollama_client import ollama_client
 
 app = FastAPI(
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(chat.router)
 app.include_router(sessions.router)
 app.include_router(models_router.router)
+app.include_router(memory_router.router)
 
 _start_time = time.monotonic()
 

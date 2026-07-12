@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     default_model: str = "llama3.1"
 
+    memory_working_token_budget: int = 1800
+
     class Config:
         env_file = ".env"
 

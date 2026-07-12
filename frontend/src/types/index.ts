@@ -38,3 +38,27 @@ export interface SystemHealth {
   memoryUsedGb: number
   ollamaConnected: boolean
 }
+
+export interface MemoryEntry {
+  id: string
+  content: string
+  entryType: string
+  importance: number
+  source: string
+  schemaVersion: number
+  fingerprint: string
+  sourceSessionId: string | null
+  sourceMessageId: string | null
+  confidence: number
+  isPinned: boolean
+  accessCount: number
+  createdAt: string
+  updatedAt: string
+  lastAccessedAt: string | null
+  tags: string[]
+}
+
+export interface MemorySearchResult {
+  entry: MemoryEntry
+  score: number
+}
