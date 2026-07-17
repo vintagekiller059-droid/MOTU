@@ -1,73 +1,68 @@
 import React from 'react';
-import { Send, Search, Filter, FolderKanban, Sliders } from 'lucide-react';
+import { useUIStore } from '../stores/ui-store';
+import { Cpu, HardDrive, CpuIcon, Activity } from 'lucide-react';
+
+interface MetricCardProps {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  colorClass: string;
+}
+
+const MetricCard: React.FC<MetricCardProps> = ({ label, value, icon: Icon, colorClass }) => {
+  return (
+    <div className="flex-1 h-24 glass-panel bg-os-card border-white/[0.04] p-4 flex flex-col justify-between glass-card-glow relative overflow-hidden group">
+      <div className="flex items-center justify-between w-full">
+        <span className="text-[11px] font-mono text-slate-500 tracking-wider uppercase">{label}</span>
+        <Icon className={`w-4 h-4 ${colorClass}`} />
+      </div>
+      <div className="flex items-end justify-between w-full mt-1">
+        <span className="text-xl font-light text-slate-100 tracking-tight">{value}</span>
+        
+        {/* Micro Canvas Sparkline instead of heavy layout components */}
+        <svg className="w-16 h-6 opacity-30 group-hover:opacity-60 transition-opacity duration-300" viewBox="0 0 40 10">
+          <path 
+            d="M0,5 Q5,2 10,7 T20,3 T30,8 T40,4" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="1"
+            className={colorClass}
+          />
+        </svg>
+      </div>
+    </div>
+  );
+};
 
 export const BottomPanels: React.FC = () => {
+  const { cpuUsage, ramUsage } = useUIStore();
+
   return (
-    <div className="h-44 border-t border-white/[0.04] grid grid-cols-4 gap-4 p-4 bg-[#080b1e]/60 backdrop-blur-md z-10">
-      <div className="glass-panel p-3 flex flex-col justify-between">
-        <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-1">Chat Preview</div>
-        <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
-          <div className="text-xs text-brand-cyan font-mono">User: <span className="text-slate-300">Run localized system diagnostic trace.</span></div>
-          <div className="text-xs text-brand-purple font-mono">Motu: <span className="text-slate-400">Core parameters operational. Neural fabric online.</span></div>
-        </div>
-        <div className="mt-2 relative">
-          <input 
-            type="text" 
-            placeholder="Interrogate core..." 
-            className="w-full bg-white/[0.02] border border-white/5 rounded-md py-1 px-2 text-xs text-slate-200 focus:outline-none focus:border-brand-blue/30"
-          />
-          <Send className="w-3 h-3 absolute right-2 top-2 text-slate-500" />
-        </div>
-      </div>
-      <div className="glass-panel p-3 flex flex-col">
-        <div className="flex justify-between items-center mb-1.5">
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Memory Fabric</div>
-          <div className="flex gap-1">
-            <Search className="w-3 h-3 text-slate-400" />
-            <Filter className="w-3 h-3 text-slate-400" />
-          </div>
-        </div>
-        <div className="flex-1 space-y-1 overflow-y-auto text-[11px]">
-          <div className="p-1 rounded bg-white/[0.02] border border-white/[0.02] flex justify-between">
-            <span className="text-slate-300 truncate font-mono">@identity_context</span>
-            <span className="text-brand-cyan scale-90 font-bold">Active</span>
-          </div>
-          <div className="p-1 rounded bg-white/[0.01] border border-white/[0.01] flex justify-between">
-            <span className="text-slate-400 truncate font-mono">@hardware_mapping</span>
-            <span className="text-slate-500 scale-90">Cached</span>
-          </div>
-        </div>
-      </div>
-      <div className="glass-panel p-3 flex flex-col">
-        <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2 flex items-center gap-1">
-          <Sliders className="w-3 h-3 text-brand-blue" /> Dynamic Hyperparameters
-        </div>
-        <div className="space-y-2 flex-1 justify-center flex flex-col">
-          <div>
-            <div className="flex justify-between text-[10px] text-slate-400 font-mono mb-0.5"><span>Temperature</span><span>0.7</span></div>
-            <div className="h-1 bg-white/5 rounded-full"><div className="h-full bg-brand-blue w-[70%]" /></div>
-          </div>
-          <div>
-            <div className="flex justify-between text-[10px] text-slate-400 font-mono mb-0.5"><span>Top P</span><span>0.9</span></div>
-            <div className="h-1 bg-white/5 rounded-full"><div className="h-full bg-brand-purple w-[90%]" /></div>
-          </div>
-        </div>
-      </div>
-      <div className="glass-panel p-3 flex flex-col">
-        <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
-          <FolderKanban className="w-3 h-3 text-brand-magenta" /> Vector Assets
-        </div>
-        <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto text-[11px]">
-          <div className="p-1.5 rounded border border-white/5 bg-white/[0.01] flex flex-col justify-between">
-            <span className="text-slate-300 font-mono truncate">corpus.json</span>
-            <span className="text-[9px] text-slate-500 font-mono">2.4 MB</span>
-          </div>
-          <div className="p-1.5 rounded border border-white/5 bg-white/[0.01] flex flex-col justify-between">
-            <span className="text-slate-300 font-mono truncate">config.yaml</span>
-            <span className="text-[9px] text-slate-500 font-mono">12 KB</span>
-          </div>
-        </div>
-      </div>
+    <div className="w-full max-w-4xl mx-auto px-6 pb-6 flex gap-4 shrink-0 z-20">
+      <MetricCard 
+        label="CPU Usage" 
+        value={`${cpuUsage.toFixed(1)}%`} 
+        icon={Cpu} 
+        colorClass="text-brand-cyan" 
+      />
+      <MetricCard 
+        label="RAM Allocation" 
+        value={`${ramUsage.toFixed(2)} GB`} 
+        icon={HardDrive} 
+        colorClass="text-brand-purple" 
+      />
+      <MetricCard 
+        label="Active Core Model" 
+        value="Llama 3.1 8B" 
+        icon={CpuIcon} 
+        colorClass="text-brand-cyan" 
+      />
+      <MetricCard 
+        label="Core Telemetry" 
+        value="Optimal" 
+        icon={Activity} 
+        colorClass="text-brand-success" 
+      />
     </div>
   );
 };
