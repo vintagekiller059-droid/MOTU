@@ -1,0 +1,233 @@
+/* === MOTU Animation Definitions === */
+/* All animations use GPU-composited properties only: transform, opacity, filter */
+
+/* ── Boot Sequence ── */
+@keyframes bootFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bootFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes bootPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ── AI Core ── */
+@keyframes coreBreathe {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+@keyframes coreGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px var(--text-accent)); }
+  50% { filter: drop-shadow(0 0 16px var(--text-accent)); }
+}
+
+@keyframes orbitSpin1 {
+  from { transform: rotateX(70deg) rotateZ(0deg); }
+  to { transform: rotateX(70deg) rotateZ(360deg); }
+}
+
+@keyframes orbitSpin2 {
+  from { transform: rotateX(60deg) rotateY(30deg) rotateZ(0deg); }
+  to { transform: rotateX(60deg) rotateY(30deg) rotateZ(360deg); }
+}
+
+@keyframes orbitSpin3 {
+  from { transform: rotateX(80deg) rotateY(-20deg) rotateZ(0deg); }
+  to { transform: rotateX(80deg) rotateY(-20deg) rotateZ(-360deg); }
+}
+
+/* ── Floating Particles ── */
+@keyframes particleFloat1 {
+  0%, 100% { transform: translate(0, 0); opacity: 0.15; }
+  25% { transform: translate(8px, -12px); opacity: 0.35; }
+  50% { transform: translate(-4px, -24px); opacity: 0.2; }
+  75% { transform: translate(12px, -8px); opacity: 0.3; }
+}
+
+@keyframes particleFloat2 {
+  0%, 100% { transform: translate(0, 0); opacity: 0.2; }
+  33% { transform: translate(-10px, -16px); opacity: 0.35; }
+  66% { transform: translate(6px, -20px); opacity: 0.15; }
+}
+
+@keyframes particleFloat3 {
+  0%, 100% { transform: translate(0, 0); opacity: 0.1; }
+  50% { transform: translate(14px, -10px); opacity: 0.3; }
+}
+
+/* ── Background ── */
+@keyframes bgShift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  33% { transform: translate(3%, -2%) scale(1.05); opacity: 0.5; }
+  66% { transform: translate(-2%, 1%) scale(0.95); opacity: 0.35; }
+}
+
+@keyframes bgShift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+  50% { transform: translate(-3%, 2%) scale(1.08); opacity: 0.4; }
+}
+
+@keyframes ambientPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.5; }
+}
+
+/* ── UI ── */
+@keyframes connectionPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes messageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dockItemHover {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
+}
+
+/* ── Utility Classes ── */
+.animate-boot-fade-in {
+  animation: bootFadeIn 400ms var(--ease-out) forwards;
+}
+
+.animate-boot-fade-out {
+  animation: bootFadeOut 500ms var(--ease-out) forwards;
+}
+
+.animate-boot-pulse {
+  animation: bootPulse 1.5s ease-in-out infinite;
+}
+
+.animate-core-breathe {
+  animation: coreBreathe 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.animate-core-glow {
+  animation: coreGlow 4s ease-in-out infinite;
+}
+
+.animate-orbit-1 {
+  animation: orbitSpin1 20s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-orbit-2 {
+  animation: orbitSpin2 30s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-orbit-3 {
+  animation: orbitSpin3 40s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-particle-1 {
+  animation: particleFloat1 18s ease-in-out infinite;
+}
+
+.animate-particle-2 {
+  animation: particleFloat2 22s ease-in-out infinite;
+}
+
+.animate-particle-3 {
+  animation: particleFloat3 16s ease-in-out infinite;
+}
+
+.animate-bg-shift-1 {
+  animation: bgShift1 25s ease-in-out infinite;
+}
+
+.animate-bg-shift-2 {
+  animation: bgShift2 30s ease-in-out infinite;
+}
+
+.animate-ambient {
+  animation: ambientPulse 8s ease-in-out infinite;
+}
+
+.animate-connection-pulse {
+  animation: connectionPulse 2s ease-in-out infinite;
+}
+
+.animate-message-enter {
+  animation: messageEnter 200ms var(--ease-out) forwards;
+  @keyframes tooltipIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.animate-tooltip-in {
+  animation: tooltipIn 180ms var(--ease-out) forwards;
+}
+}
+
+/* ── Glassmorphism ── */
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-hover:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glow);
+}
+
+.glass-active {
+  background: var(--bg-glass-active);
+  border-color: var(--border-accent);
+  box-shadow: var(--glow-accent);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+/* ── GPU Transitions ── */
+.transition-gpu {
+  transition-property: opacity, transform, filter;
+  transition-timing-function: var(--ease-out);
+  transition-duration: var(--duration-normal);
+  will-change: transform;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-core-breathe,
+  .animate-core-glow,
+  .animate-orbit-1,
+  .animate-orbit-2,
+  .animate-orbit-3,
+  .animate-particle-1,
+  .animate-particle-2,
+  .animate-particle-3,
+  .animate-bg-shift-1,
+  .animate-bg-shift-2,
+  .animate-ambient,
+  .animate-connection-pulse,
+  .animate-boot-pulse {
+    animation: none !important;
+  }
+}

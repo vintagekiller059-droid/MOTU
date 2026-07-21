@@ -1,233 +1,189 @@
-/* === MOTU Animation Definitions === */
-/* All animations use GPU-composited properties only: transform, opacity, filter */
+/* ============================================================
+   MOTU Animation System — GPU-Optimized for Intel HD Graphics 5500
+   ============================================================ */
 
-/* ── Boot Sequence ── */
-@keyframes bootFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes bootFadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-@keyframes bootPulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-
-/* ── AI Core ── */
+/* ── Core Pulse ── */
 @keyframes coreBreathe {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.12); opacity: 1; }
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.04); opacity: 1; }
 }
 
-@keyframes coreGlow {
-  0%, 100% { filter: drop-shadow(0 0 8px var(--text-accent)); }
-  50% { filter: drop-shadow(0 0 16px var(--text-accent)); }
+@keyframes coreBreatheInner {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50%      { transform: scale(1.06); opacity: 0.95; }
 }
 
-@keyframes orbitSpin1 {
-  from { transform: rotateX(70deg) rotateZ(0deg); }
-  to { transform: rotateX(70deg) rotateZ(360deg); }
+@keyframes outerGlowBreathe {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.45; }
 }
 
-@keyframes orbitSpin2 {
-  from { transform: rotateX(60deg) rotateY(30deg) rotateZ(0deg); }
-  to { transform: rotateX(60deg) rotateY(30deg) rotateZ(360deg); }
+/* ── Orbital Ring Rotation ── */
+@keyframes orbitRotateCW {
+  from { transform: rotateX(72deg) rotateY(12deg) rotateZ(0deg); }
+  to   { transform: rotateX(72deg) rotateY(12deg) rotateZ(360deg); }
 }
 
-@keyframes orbitSpin3 {
-  from { transform: rotateX(80deg) rotateY(-20deg) rotateZ(0deg); }
-  to { transform: rotateX(80deg) rotateY(-20deg) rotateZ(-360deg); }
+@keyframes orbitRotateCCW {
+  from { transform: rotateX(64deg) rotateY(-8deg) rotateZ(360deg); }
+  to   { transform: rotateX(64deg) rotateY(-8deg) rotateZ(0deg); }
+}
+
+@keyframes orbitRotateCW2 {
+  from { transform: rotateX(78deg) rotateY(20deg) rotateZ(0deg); }
+  to   { transform: rotateX(78deg) rotateY(20deg) rotateZ(360deg); }
+}
+
+@keyframes orbitRotateCCW2 {
+  from { transform: rotateX(55deg) rotateY(-16deg) rotateZ(360deg); }
+  to   { transform: rotateX(55deg) rotateY(-16deg) rotateZ(0deg); }
+}
+
+/* ── Ring Particles ── */
+@keyframes ringParticleTravel {
+  0%   { transform: rotate(0deg) translateX(var(--orbit-radius)) rotate(0deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: rotate(360deg) translateX(var(--orbit-radius)) rotate(-360deg); opacity: 0; }
 }
 
 /* ── Floating Particles ── */
-@keyframes particleFloat1 {
-  0%, 100% { transform: translate(0, 0); opacity: 0.15; }
-  25% { transform: translate(8px, -12px); opacity: 0.35; }
-  50% { transform: translate(-4px, -24px); opacity: 0.2; }
-  75% { transform: translate(12px, -8px); opacity: 0.3; }
+@keyframes floatUp {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  15%  { opacity: var(--particle-opacity, 0.15); }
+  85%  { opacity: var(--particle-opacity, 0.15); }
+  100% { transform: translateY(var(--float-dist, -120px)) translateX(var(--float-drift, 20px)); opacity: 0; }
 }
 
-@keyframes particleFloat2 {
-  0%, 100% { transform: translate(0, 0); opacity: 0.2; }
-  33% { transform: translate(-10px, -16px); opacity: 0.35; }
-  66% { transform: translate(6px, -20px); opacity: 0.15; }
+@keyframes floatUpDrift {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  15%  { opacity: var(--particle-opacity, 0.12); }
+  85%  { opacity: var(--particle-opacity, 0.12); }
+  100% { transform: translateY(var(--float-dist, -100px)) translateX(var(--float-drift, -30px)); opacity: 0; }
 }
 
-@keyframes particleFloat3 {
-  0%, 100% { transform: translate(0, 0); opacity: 0.1; }
-  50% { transform: translate(14px, -10px); opacity: 0.3; }
+@keyframes floatUpSlow {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  20%  { opacity: var(--particle-opacity, 0.1); }
+  80%  { opacity: var(--particle-opacity, 0.1); }
+  100% { transform: translateY(var(--float-dist, -140px)) translateX(var(--float-drift, 10px)); opacity: 0; }
 }
 
-/* ── Background ── */
-@keyframes bgShift1 {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
-  33% { transform: translate(3%, -2%) scale(1.05); opacity: 0.5; }
-  66% { transform: translate(-2%, 1%) scale(0.95); opacity: 0.35; }
+/* ── Background Layers ── */
+@keyframes bgShift {
+  0%, 100% { transform: translateX(0) translateY(0) scale(1); }
+  33%      { transform: translateX(2%) translateY(-1%) scale(1.02); }
+  66%      { transform: translateX(-1%) translateY(1%) scale(0.98); }
 }
 
-@keyframes bgShift2 {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; }
-  50% { transform: translate(-3%, 2%) scale(1.08); opacity: 0.4; }
+@keyframes bgPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.6; }
 }
 
-@keyframes ambientPulse {
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.03; }
+  50%      { opacity: 0.06; }
+}
+
+@keyframes vignetteBreathe {
   0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.5; }
+  50%      { opacity: 0.5; }
 }
 
-/* ── UI ── */
-@keyframes connectionPulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-@keyframes messageEnter {
+/* ── Boot Sequence ── */
+@keyframes bootFadeIn {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes dockItemHover {
-  from { transform: scale(1); }
-  to { transform: scale(1.15); }
+@keyframes bootProgress {
+  from { width: 0%; }
+  to   { width: 100%; }
 }
 
 /* ── Utility Classes ── */
-.animate-boot-fade-in {
-  animation: bootFadeIn 400ms var(--ease-out) forwards;
-}
-
-.animate-boot-fade-out {
-  animation: bootFadeOut 500ms var(--ease-out) forwards;
-}
-
-.animate-boot-pulse {
-  animation: bootPulse 1.5s ease-in-out infinite;
-}
-
 .animate-core-breathe {
   animation: coreBreathe 4s ease-in-out infinite;
-  transform-origin: center;
+  will-change: transform, opacity;
 }
 
-.animate-core-glow {
-  animation: coreGlow 4s ease-in-out infinite;
+.animate-core-breathe-inner {
+  animation: coreBreatheInner 3.5s ease-in-out infinite;
+  animation-delay: 0.7s;
+  will-change: transform, opacity;
 }
 
-.animate-orbit-1 {
-  animation: orbitSpin1 20s linear infinite;
-  transform-style: preserve-3d;
+.animate-outer-glow {
+  animation: outerGlowBreathe 5s ease-in-out infinite;
+  will-change: opacity;
 }
 
-.animate-orbit-2 {
-  animation: orbitSpin2 30s linear infinite;
-  transform-style: preserve-3d;
-}
-
-.animate-orbit-3 {
-  animation: orbitSpin3 40s linear infinite;
-  transform-style: preserve-3d;
-}
-
-.animate-particle-1 {
-  animation: particleFloat1 18s ease-in-out infinite;
-}
-
-.animate-particle-2 {
-  animation: particleFloat2 22s ease-in-out infinite;
-}
-
-.animate-particle-3 {
-  animation: particleFloat3 16s ease-in-out infinite;
-}
-
-.animate-bg-shift-1 {
-  animation: bgShift1 25s ease-in-out infinite;
-}
-
-.animate-bg-shift-2 {
-  animation: bgShift2 30s ease-in-out infinite;
-}
-
-.animate-ambient {
-  animation: ambientPulse 8s ease-in-out infinite;
-}
-
-.animate-connection-pulse {
-  animation: connectionPulse 2s ease-in-out infinite;
-}
-
-.animate-message-enter {
-  animation: messageEnter 200ms var(--ease-out) forwards;
-  @keyframes tooltipIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 4px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-.animate-tooltip-in {
-  animation: tooltipIn 180ms var(--ease-out) forwards;
-}
-}
-
-/* ── Glassmorphism ── */
-.glass {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  border: 1px solid var(--border-subtle);
-}
-
-.glass-hover:hover {
-  background: var(--bg-glass-hover);
-  border-color: var(--border-glow);
-}
-
-.glass-active {
-  background: var(--bg-glass-active);
-  border-color: var(--border-accent);
-  box-shadow: var(--glow-accent);
-}
-
-.glass-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-}
-
-/* ── GPU Transitions ── */
-.transition-gpu {
-  transition-property: opacity, transform, filter;
-  transition-timing-function: var(--ease-out);
-  transition-duration: var(--duration-normal);
+.animate-orbit-cw {
+  animation: orbitRotateCW 18s linear infinite;
   will-change: transform;
 }
 
-/* ── Reduced Motion ── */
+.animate-orbit-ccw {
+  animation: orbitRotateCCW 24s linear infinite;
+  will-change: transform;
+}
+
+.animate-orbit-cw-2 {
+  animation: orbitRotateCW2 32s linear infinite;
+  will-change: transform;
+}
+
+.animate-orbit-ccw-2 {
+  animation: orbitRotateCCW2 40s linear infinite;
+  will-change: transform;
+}
+
+.animate-float {
+  animation: floatUp var(--float-duration, 20s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+  will-change: transform, opacity;
+}
+
+.animate-float-drift {
+  animation: floatUpDrift var(--float-duration, 22s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+  will-change: transform, opacity;
+}
+
+.animate-float-slow {
+  animation: floatUpSlow var(--float-duration, 26s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+  will-change: transform, opacity;
+}
+
+.animate-bg-shift {
+  animation: bgShift 25s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-bg-pulse {
+  animation: bgPulse 30s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.animate-grid-pulse {
+  animation: gridPulse 8s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.animate-vignette {
+  animation: vignetteBreathe 20s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/* ── Accessibility ── */
 @media (prefers-reduced-motion: reduce) {
-  .animate-core-breathe,
-  .animate-core-glow,
-  .animate-orbit-1,
-  .animate-orbit-2,
-  .animate-orbit-3,
-  .animate-particle-1,
-  .animate-particle-2,
-  .animate-particle-3,
-  .animate-bg-shift-1,
-  .animate-bg-shift-2,
-  .animate-ambient,
-  .animate-connection-pulse,
-  .animate-boot-pulse {
-    animation: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

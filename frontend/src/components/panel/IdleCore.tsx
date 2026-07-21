@@ -1,14 +1,24 @@
-import { AICore } from '../core/AICore'
+import React, { Suspense, lazy } from "react";
 
-export function IdleCore() {
+const AICore = lazy(() => import("../core/AICore"));
+
+const CoreFallback = () => (
+  <div className="flex items-center justify-center w-full h-full">
+    <div className="w-16 h-16 rounded-full bg-cyan-500/10 animate-pulse" />
+  </div>
+);
+
+export default function IdleCore() {
   return (
-    <main className="relative z-10 flex flex-1 flex-col items-center justify-center">
-      <AICore />
-      <div className="mt-10 text-center">
-        <p className="font-mono text-xs tracking-[0.25em]" style={{ color: 'var(--text-dim)' }}>
-          COGNITIVE CORE ACTIVE
-        </p>
+    <div className="w-full h-full flex items-center justify-center p-6">
+      <div
+        className="relative flex items-center justify-center w-full"
+        style={{ maxHeight: "30vh", minHeight: 200 }}
+      >
+        <Suspense fallback={<CoreFallback />}>
+          <AICore />
+        </Suspense>
       </div>
-    </main>
-  )
+    </div>
+  );
 }

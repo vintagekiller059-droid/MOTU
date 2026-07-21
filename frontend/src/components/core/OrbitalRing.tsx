@@ -1,65 +1,83 @@
-/**
- * OrbitalRing
- *
- * A single orbital ring rendered as SVG ellipse.
- * CSS 3D transform creates the tilted orbit effect.
- * GPU-composited via transform only.
- */
+import React, { useMemo } from "react";
 
 interface OrbitalRingProps {
-  size: number
-  tilt: number
-  rotation: number
-  duration: number
-  opacity: number
-  strokeWidth?: number
+  radius: number;
+  tiltX: number;
+  tiltY: number;
+  duration: number;
+  direction: "cw" | "ccw";
+  strokeWidth?: number;
+  opacity?: number;
+  showParticle?: boolean;
 }
 
-export function OrbitalRing({
-  size,
-  tilt,
-  rotation,
+const OrbitalRing = React.memo(function OrbitalRing({
+  radius,
+  tiltX,
+  tiltY,
   duration,
-  opacity,
+  direction,
   strokeWidth = 1,
+  opacity = 0.35,
+  showParticle = true,
 }: OrbitalRingProps) {
-  const rx = size * 0.42
-  const ry = size * 0.12
-  const cx = size / 2
-  const cy = size / 2
+  const size = radius * 2 + 8;
+  const center = size / 2;
+
+  const animClass = useMemo(() => {
+    if (direction === "cw") {
+      if (tiltX > 70) return "animate-orbit-cw-2";
+      return "animate-orbit-cw";
+    }
+    if (tiltX > 70) return "animate-orbit-ccw-2";
+    return "animate-orbit-ccw";
+  }, [direction, tiltX]);
 
   return (
     <div
-      className="absolute flex items-center justify-center"
+      className="absolute flex items-center justify-center pointer-events-none"
       style={{
         width: size,
         height: size,
-        transform: `rotateX(${tilt}deg) rotateZ(${rotation}deg)`,
-        animation: `orbitSpin${duration > 25 ? '3' : duration > 22 ? '2' : '1'} ${duration}s linear infinite`,
-        transformStyle: 'preserve-3d',
-        willChange: 'transform',
+        transformStyle: "preserve-3d",
       }}
     >
       <svg
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        fill="none"
-        style={{ overflow: 'visible' }}
+        className={animClass}
+        style={{
+          position: "absolute",
+          transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
+          willChange: "transform",
+        }}
       >
-        <ellipse
-          cx={cx}
-          cy={cy}
-          rx={rx}
-          ry={ry}
-          stroke="var(--text-accent)"
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="rgba(0, 242, 254, 0.4)"
           strokeWidth={strokeWidth}
           opacity={opacity}
-          style={{
-            filter: 'drop-shadow(0 0 3px var(--text-accent))',
-          }}
         />
       </svg>
+      {showParticle && (
+        <div
+          className="absolute rounded-full bg-cyan-300 pointer-events-none"
+          style={{
+            width: 4,
+            height: 4,
+            animation: `ringParticleTravel ${duration}s linear infinite`,
+            ["--orbit-radius" as string]: `${radius}px`,
+            opacity: 0.7,
+            willChange: "transform",
+          }}
+        />
+      )}
     </div>
-  )
-}
+  );
+});
+
+export default OrbitalRing;
