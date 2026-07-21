@@ -1,78 +1,35 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import './animations.css';
 
-@layer base {
-  body {
-    background-color: #050814;
-    color: #FFFFFF;
-    font-family: 'Inter', '-apple-system', sans-serif;
-    overflow: hidden;
-    user-select: none;
-  }
+:root {
+  --bg-core: #050816;
+  --color-cyan: #06b6d4;
+  --color-electric-blue: #3b82f6;
+  --color-teal: #0d9488;
+  --color-green-highlight: #22c55e;
 }
 
-/* Premium OS Glassmorphism Base Specifications */
-.premium-glass {
-  background: rgba(5, 8, 20, 0.35);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(0, 229, 255, 0.07);
-  box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
-  border-radius: 20px;
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-core);
+  color: #f3f4f6;
+  font-family: 'Inter', '-apple-system', 'SF Pro', sans-serif;
+  overflow: hidden;
 }
 
-.premium-card-hover {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+.glass-panel {
+  background: rgba(5, 8, 22, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(6, 182, 212, 0.08);
 }
 
-.premium-card-hover:hover {
-  border-color: rgba(0, 229, 255, 0.2);
-  background: rgba(5, 8, 20, 0.5);
-  box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.6),
-    0 0 25px rgba(0, 229, 255, 0.08);
-  transform: translateY(-2px);
+.glass-card {
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(6, 182, 212, 0.1);
 }
-
-/* GPU Performance Acceleration - Offloads work from i3 CPU */
-.hardware-layer {
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  will-change: transform, opacity;
-}
-
-/* Pure CSS Cinematic Oscillations & Rotations */
-@keyframes coreBreathe {
-  0%, 100% { transform: scale(1) translate3d(0,0,0); opacity: 0.85; }
-  50% { transform: scale(1.03) translate3d(0,0,0); opacity: 1; }
-}
-
-@keyframes spinClockwise {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes spinCounterClockwise {
-  0% { transform: rotate(360deg); }
-  100% { transform: rotate(0deg); }
-}
-
-@keyframes particleDrift {
-  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.3; }
-  50% { transform: translate3d(15px, -15px, 0); opacity: 0.8; }
-}
-
-@keyframes pulseNeural {
-  0%, 100% { stroke-dashoffset: 0; opacity: 0.4; }
-  50% { opacity: 0.9; }
-  100% { stroke-dashoffset: -100; }
-}
-
-.animate-core-breathe { animation: coreBreathe 7s ease-in-out infinite; }
-.animate-spin-slow { animation: spinClockwise 90s linear infinite; }
-.animate-spin-reverse { animation: spinCounterClockwise 50s linear infinite; }
-.animate-drift-slow { animation: particleDrift 8s ease-in-out infinite; }
-.animate-pulse-neural { animation: pulseNeural 4s linear infinite; }

@@ -1,189 +1,40 @@
-/* ============================================================
-   MOTU Animation System — GPU-Optimized for Intel HD Graphics 5500
-   ============================================================ */
-
-/* ── Core Pulse ── */
-@keyframes coreBreathe {
-  0%, 100% { transform: scale(1); opacity: 0.85; }
-  50%      { transform: scale(1.04); opacity: 1; }
-}
-
-@keyframes coreBreatheInner {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50%      { transform: scale(1.06); opacity: 0.95; }
-}
-
-@keyframes outerGlowBreathe {
-  0%, 100% { opacity: 0.25; }
-  50%      { opacity: 0.45; }
-}
-
-/* ── Orbital Ring Rotation ── */
-@keyframes orbitRotateCW {
-  from { transform: rotateX(72deg) rotateY(12deg) rotateZ(0deg); }
-  to   { transform: rotateX(72deg) rotateY(12deg) rotateZ(360deg); }
-}
-
-@keyframes orbitRotateCCW {
-  from { transform: rotateX(64deg) rotateY(-8deg) rotateZ(360deg); }
-  to   { transform: rotateX(64deg) rotateY(-8deg) rotateZ(0deg); }
-}
-
-@keyframes orbitRotateCW2 {
-  from { transform: rotateX(78deg) rotateY(20deg) rotateZ(0deg); }
-  to   { transform: rotateX(78deg) rotateY(20deg) rotateZ(360deg); }
-}
-
-@keyframes orbitRotateCCW2 {
-  from { transform: rotateX(55deg) rotateY(-16deg) rotateZ(360deg); }
-  to   { transform: rotateX(55deg) rotateY(-16deg) rotateZ(0deg); }
-}
-
-/* ── Ring Particles ── */
-@keyframes ringParticleTravel {
-  0%   { transform: rotate(0deg) translateX(var(--orbit-radius)) rotate(0deg); opacity: 0; }
-  10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { transform: rotate(360deg) translateX(var(--orbit-radius)) rotate(-360deg); opacity: 0; }
-}
-
-/* ── Floating Particles ── */
-@keyframes floatUp {
-  0%   { transform: translateY(0) translateX(0); opacity: 0; }
-  15%  { opacity: var(--particle-opacity, 0.15); }
-  85%  { opacity: var(--particle-opacity, 0.15); }
-  100% { transform: translateY(var(--float-dist, -120px)) translateX(var(--float-drift, 20px)); opacity: 0; }
-}
-
-@keyframes floatUpDrift {
-  0%   { transform: translateY(0) translateX(0); opacity: 0; }
-  15%  { opacity: var(--particle-opacity, 0.12); }
-  85%  { opacity: var(--particle-opacity, 0.12); }
-  100% { transform: translateY(var(--float-dist, -100px)) translateX(var(--float-drift, -30px)); opacity: 0; }
-}
-
-@keyframes floatUpSlow {
-  0%   { transform: translateY(0) translateX(0); opacity: 0; }
-  20%  { opacity: var(--particle-opacity, 0.1); }
-  80%  { opacity: var(--particle-opacity, 0.1); }
-  100% { transform: translateY(var(--float-dist, -140px)) translateX(var(--float-drift, 10px)); opacity: 0; }
-}
-
-/* ── Background Layers ── */
-@keyframes bgShift {
-  0%, 100% { transform: translateX(0) translateY(0) scale(1); }
-  33%      { transform: translateX(2%) translateY(-1%) scale(1.02); }
-  66%      { transform: translateX(-1%) translateY(1%) scale(0.98); }
-}
-
-@keyframes bgPulse {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 0.6; }
-}
-
-@keyframes gridPulse {
-  0%, 100% { opacity: 0.03; }
-  50%      { opacity: 0.06; }
-}
-
-@keyframes vignetteBreathe {
-  0%, 100% { opacity: 0.3; }
-  50%      { opacity: 0.5; }
-}
-
-/* ── Boot Sequence ── */
-@keyframes bootFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes bootProgress {
-  from { width: 0%; }
-  to   { width: 100%; }
-}
-
-/* ── Utility Classes ── */
-.animate-core-breathe {
-  animation: coreBreathe 4s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-.animate-core-breathe-inner {
-  animation: coreBreatheInner 3.5s ease-in-out infinite;
-  animation-delay: 0.7s;
-  will-change: transform, opacity;
-}
-
-.animate-outer-glow {
-  animation: outerGlowBreathe 5s ease-in-out infinite;
-  will-change: opacity;
-}
-
-.animate-orbit-cw {
-  animation: orbitRotateCW 18s linear infinite;
-  will-change: transform;
-}
-
-.animate-orbit-ccw {
-  animation: orbitRotateCCW 24s linear infinite;
-  will-change: transform;
-}
-
-.animate-orbit-cw-2 {
-  animation: orbitRotateCW2 32s linear infinite;
-  will-change: transform;
-}
-
-.animate-orbit-ccw-2 {
-  animation: orbitRotateCCW2 40s linear infinite;
-  will-change: transform;
-}
-
-.animate-float {
-  animation: floatUp var(--float-duration, 20s) ease-in-out infinite;
-  animation-delay: var(--float-delay, 0s);
-  will-change: transform, opacity;
-}
-
-.animate-float-drift {
-  animation: floatUpDrift var(--float-duration, 22s) ease-in-out infinite;
-  animation-delay: var(--float-delay, 0s);
-  will-change: transform, opacity;
-}
-
-.animate-float-slow {
-  animation: floatUpSlow var(--float-duration, 26s) ease-in-out infinite;
-  animation-delay: var(--float-delay, 0s);
-  will-change: transform, opacity;
-}
-
-.animate-bg-shift {
-  animation: bgShift 25s ease-in-out infinite;
-  will-change: transform;
-}
-
-.animate-bg-pulse {
-  animation: bgPulse 30s ease-in-out infinite;
-  will-change: opacity;
-}
-
-.animate-grid-pulse {
-  animation: gridPulse 8s ease-in-out infinite;
-  will-change: opacity;
-}
-
-.animate-vignette {
-  animation: vignetteBreathe 20s ease-in-out infinite;
-  will-change: opacity;
-}
-
-/* ── Accessibility ── */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+/* Scanner Sweep Line */
+@keyframes scanner-sweep {
+  0% {
+    transform: translateY(-280px);
+    opacity: 0.2;
   }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(280px);
+    opacity: 0.2;
+  }
+}
+
+.animate-scanner {
+  animation: scanner-sweep 4s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Performant GPU Ring Rotations */
+@keyframes spin-clockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-counterclockwise {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.spin-cw {
+  animation: spin-clockwise var(--spin-duration, 30s) linear infinite;
+  will-change: transform;
+}
+
+.spin-ccw {
+  animation: spin-counterclockwise var(--spin-duration, 30s) linear infinite;
+  will-change: transform;
 }

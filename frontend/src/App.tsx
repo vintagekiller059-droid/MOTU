@@ -1,51 +1,34 @@
-import React, { useEffect, Suspense, lazy } from 'react';
-import Sidebar from './components/Sidebar';
-import { useUIStore } from './stores/ui-store';
+import React from 'react';
+import { Sidebar } from './components/Sidebar';
+import { RightPanel } from './components/RightPanel';
+import { BottomCards } from './components/BottomCards';
+import { AICore } from './components/core/AICore';
+import { NeuralSphere } from './components/core/NeuralSphere';
+import './styles/tokens.css';
 
-const AICore = lazy(() => import('./components/core/AICore'));
-const ChatPanel = lazy(() => import('./components/panel/ChatPanel'));
-const BottomCards = lazy(() => import('./components/BottomCards'));
-
-const SectionFallback = () => (
-  <div className="flex-1 w-full h-full bg-[#050814]/40 border border-white/[0.02] rounded-2xl animate-pulse" />
-);
-
-export function App() {
-  const { updateMetrics } = useUIStore();
-
-  useEffect(() => {
-    const metricsTimer = setInterval(() => {
-      updateMetrics();
-    }, 2500);
-    return () => clearInterval(metricsTimer);
-  }, [updateMetrics]);
-
+const App: React.FC = () => {
   return (
-    <div className="w-screen h-screen flex bg-[#050814] text-white antialiased overflow-hidden select-none m-0 p-0 relative">
-      
-      {/* Immersive Space Cosmic Ambient Mesh Background Layers */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0d1330]/30 via-[#050814] to-[#020306] pointer-events-none z-0" />
-      <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px] pointer-events-none z-0" />
-      
+    <div className="relative w-screen h-screen bg-[#050816] flex overflow-hidden select-none">
+      {/* Background Neural Lattice */}
+      <NeuralSphere />
+
+      {/* Left Navigation Rail */}
       <Sidebar />
 
-      {/* Extended Breathing Room Container Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 px-8 gap-4">
-        <Suspense fallback={<SectionFallback />}>
+      {/* Center Main Viewport (AI Core & Responsive Bottom Cards) */}
+      <main className="flex-1 h-full min-w-0 flex flex-col items-center justify-between py-4 px-2 sm:px-4 z-10 overflow-hidden box-border">
+        <div className="flex-1 w-full flex items-center justify-center min-h-0">
           <AICore />
-        </Suspense>
-
-        <Suspense fallback={<SectionFallback />}>
-          <BottomCards />
-        </Suspense>
+        </div>
+        
+        {/* Responsive Telemetry Container */}
+        <BottomCards />
       </main>
 
-      {/* Primary Interaction Interface Panel (Chat Replace) */}
-      <Suspense fallback={<SectionFallback />}>
-        <ChatPanel />
-      </Suspense>
+      {/* Right Conversation Stream Panel */}
+      <RightPanel />
     </div>
   );
-}
+};
 
 export default App;

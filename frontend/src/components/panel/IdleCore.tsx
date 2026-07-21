@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from "react";
 
-const AICore = lazy(() => import("../core/AICore"));
+const AICore = lazy(() => import("../core/AICore").then(mod => ({ default: mod.AICore })));
 
 const CoreFallback = () => (
   <div className="flex items-center justify-center w-full h-full">
@@ -11,10 +11,7 @@ const CoreFallback = () => (
 export default function IdleCore() {
   return (
     <div className="w-full h-full flex items-center justify-center p-6">
-      <div
-        className="relative flex items-center justify-center w-full"
-        style={{ maxHeight: "30vh", minHeight: 200 }}
-      >
+      <div className="relative flex items-center justify-center w-full h-full">
         <Suspense fallback={<CoreFallback />}>
           <AICore />
         </Suspense>
