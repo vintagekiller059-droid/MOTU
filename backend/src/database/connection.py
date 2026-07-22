@@ -1,87 +1,50 @@
-"""SQLite engine + session factory."""
+"""SQLite Database connection layer with SQLite WAL mode enabled for fast concurrent read/write."""
 
-from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import sessionmaker
+import sqlite3
+from typing import Generator
+from src.config import settings
+from src.utils.logger import setup_logger
 
-from config import settings
-
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False},
-)
+logger = setup_logger("Database")
 
 
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, _):
-    """Enable WAL mode + foreign keys for better concurrency and integrity."""
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+class DatabaseManager:
+    """Manages SQLite connection lifecycle and schema setup."""
+
+    def __init__(self, db_path: str):
+        self.db_path = str(db_path)
+
+    def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """Context generator for API dependencies."""
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    def initialize_tables(self) -> None:
+        """Initializes system tables with WAL mode enabled."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                # Enable Write-Ahead Logging for better concurrency
+                cursor.execute("PRAGMA journal_mode=WAL;")
+                
+                # Baseline Telemetry Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS system_telemetry (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        event_type TEXT NOT NULL,
+                        details TEXT
+                    )
+                """)
+                conn.commit()
+            logger.info("Database initialized with WAL mode enabled.")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to initialize SQLite database: {e}")
+            raise e
 
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def _create_fts5_tables(connection) -> None:
-    """Create FTS5 virtual table and triggers for memory search."""
-    connection.execute(text("""
-        CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
-            content,
-            content_rowid=rowid,
-            content='memory_entries'
-        )
-    """))
-
-    connection.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS memory_entries_ai AFTER INSERT ON memory_entries
-        BEGIN
-            INSERT INTO memory_fts(rowid, content) VALUES (new.rowid, new.content);
-        END
-    """))
-
-    connection.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS memory_entries_ad AFTER DELETE ON memory_entries
-        BEGIN
-            INSERT INTO memory_fts(memory_fts, rowid, content)
-            VALUES ('delete', old.rowid, old.content);
-        END
-    """))
-
-    connection.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS memory_entries_au AFTER UPDATE ON memory_entries
-        BEGIN
-            INSERT INTO memory_fts(memory_fts, rowid, content)
-            VALUES ('delete', old.rowid, old.content);
-            INSERT INTO memory_fts(rowid, content)
-            VALUES (new.rowid, new.content);
-        END
-    """))
-
-
-def _create_memory_indexes(connection) -> None:
-    """Create indexes for memory_entries and memory_entry_tags."""
-    indexes = [
-        "CREATE INDEX IF NOT EXISTS idx_memory_entries_importance ON memory_entries(importance DESC, created_at DESC)",
-        "CREATE INDEX IF NOT EXISTS idx_memory_entries_pinned ON memory_entries(is_pinned) WHERE is_pinned = 1",
-        "CREATE INDEX IF NOT EXISTS idx_memory_entries_access ON memory_entries(access_count DESC)",
-        "CREATE INDEX IF NOT EXISTS idx_memory_entries_type ON memory_entries(entry_type, importance DESC)",
-        "CREATE INDEX IF NOT EXISTS idx_memory_entries_source ON memory_entries(source)",
-        "CREATE INDEX IF NOT EXISTS idx_memory_entries_schema ON memory_entries(schema_version)",
-        "CREATE INDEX IF NOT EXISTS idx_memory_entries_session ON memory_entries(source_session_id)",
-        "CREATE INDEX IF NOT EXISTS idx_memory_tags_tag ON memory_entry_tags(tag)",
-    ]
-    for idx in indexes:
-        connection.execute(text(idx))
-
-
-def init_db() -> None:
-    """Create all tables if they don't exist yet."""
-    from models.database import Base
-
-    Base.metadata.create_all(bind=engine)
-
-    with engine.connect() as connection:
-        _create_fts5_tables(connection)
-        _create_memory_indexes(connection)
-        connection.commit()
+db_manager = DatabaseManager(settings.DATABASE_PATH)

@@ -1,59 +1,55 @@
-import time
+"""MOTU Local AI Operating System Core Entry Point."""
 
-import psutil
-from fastapi import FastAPI, Response
+from contextlib import asynccontextmanager  # <-- ADD THIS MISSING IMPORT
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import settings
-from database.connection import init_db
-from models.schemas import HealthResponse
-from routers import chat, memory as memory_router, models as models_router, sessions
-from services.ollama_client import ollama_client
+from src.config import settings
+from src.utils.logger import setup_logger
+from src.database.session import init_db
+from src.services.ollama_client import ollama_client
+from src.routers import chat, settings as settings_router, models, sessions
+
+logger = setup_logger("Main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan management for initialization and clean teardown."""
+    logger.info("Starting MOTU Operating System Core...")
+    await init_db()
+    logger.info(f"Target local model configured: '{settings.MODEL_NAME}'")
+    
+    yield
+    
+    logger.info("Closing persistent HTTP connections...")
+    await ollama_client.close()
+    logger.info("Stopping MOTU OS Core cleanly...")
+
 
 app = FastAPI(
-    title="MOTU API",
-    description="My Own Thinking Unit — Backend API",
-    version=settings.app_version,
+    title="MOTU Local AI OS Core",
+    description="OS-grade local AI session workspace engine",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.DEBUG else None
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(chat.router)
-app.include_router(sessions.router)
-app.include_router(models_router.router)
-app.include_router(memory_router.router)
-
-_start_time = time.monotonic()
-
-
-@app.on_event("startup")
-async def on_startup():
-    init_db()
-
-
-@app.get("/api/v1/health", response_model=HealthResponse)
-async def health_check(response: Response):
-    response.headers["Cache-Control"] = "no-store"
-    ollama_connected = await ollama_client.is_available()
-    vm = psutil.virtual_memory()
-    return HealthResponse(
-        status="ok",
-        version=settings.app_version,
-        uptime=round(time.monotonic() - _start_time, 1),
-        cpu_percent=psutil.cpu_percent(interval=0.1),
-        memory_percent=vm.percent,
-        memory_used_gb=round(vm.used / (1024**3), 2),
-        ollama_connected=ollama_connected,
-    )
+# Route Mounting
+app.include_router(sessions.router, prefix="/api", tags=["OS Sessions Workspace"])
+app.include_router(chat.router, prefix="/api", tags=["Chat Engine"])
+app.include_router(settings_router.router, prefix="/api", tags=["Settings & Health"])
+app.include_router(models.router, prefix="/api", tags=["Model Management"])
 
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)

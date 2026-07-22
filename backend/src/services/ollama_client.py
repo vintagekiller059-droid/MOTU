@@ -1,91 +1,103 @@
-"""Ollama HTTP client + streaming."""
+"""Asynchronous client service for interacting with the local Ollama node with connection pooling."""
 
 import json
-from collections.abc import AsyncGenerator
-
+from typing import AsyncGenerator, Dict, Any, List, Optional
 import httpx
+from src.config import settings
+from src.utils.logger import setup_logger
 
-from config import settings
-
-
-class OllamaError(Exception):
-    """Raised when Ollama is unreachable or returns an error."""
+logger = setup_logger("OllamaClient")
 
 
 class OllamaClient:
-    def __init__(self, base_url: str | None = None):
-        self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
+    """Handles persistent HTTP communications, streaming, and model inspection with Ollama."""
 
-    async def is_available(self) -> bool:
+    def __init__(self, base_url: Optional[str] = None):
+        self.base_url = (base_url or settings.OLLAMA_URL).rstrip("/")
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Returns or creates a persistent HTTP async client with custom timeouts."""
+        if self._client is None or self._client.is_closed:
+            timeout = httpx.Timeout(connect=5.0, read=300.0, write=300.0, pool=10.0)
+            limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
+            self._client = httpx.AsyncClient(
+                base_url=self.base_url, 
+                timeout=timeout, 
+                limits=limits
+            )
+        return self._client
+
+    async def close(self):
+        """Cleanly closes persistent client connections."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            logger.info("Ollama HTTP persistent client closed.")
+
+    async def check_health(self) -> bool:
+        """Verifies if the local Ollama process is reachable."""
         try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                resp = await client.get(f"{self.base_url}/api/tags")
-                return resp.status_code == 200
-        except httpx.HTTPError:
+            client = self._get_client()
+            response = await client.get("/")
+            return response.status_code == 200
+        except Exception as e:
+            logger.warning(f"Ollama health check failed: {e}")
             return False
 
-    async def list_models(self) -> list[dict]:
+    async def list_models(self) -> List[Dict[str, Any]]:
+        """Fetches all locally installed models from Ollama."""
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(f"{self.base_url}/api/tags")
-                resp.raise_for_status()
-                data = resp.json()
-        except httpx.HTTPError as exc:
-            raise OllamaError(f"Could not reach Ollama at {self.base_url}: {exc}") from exc
+            client = self._get_client()
+            response = await client.get("/api/tags")
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("models", [])
+            logger.error(f"Failed to fetch models. Status: {response.status_code}")
+            return []
+        except Exception as e:
+            logger.error(f"Error connecting to Ollama on /api/tags: {e}")
+            return []
 
-        models = []
-        for m in data.get("models", []):
-            details = m.get("details", {})
-            models.append(
-                {
-                    "name": m.get("name", "unknown"),
-                    "size": m.get("size", 0),
-                    "parameter_count": details.get("parameter_size", ""),
-                    "format": details.get("format", ""),
-                }
-            )
-        return models
-
-    async def chat_stream(
-        self, messages: list[dict], model: str
+    async def generate_stream(
+        self, 
+        prompt: str, 
+        model: str, 
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7
     ) -> AsyncGenerator[str, None]:
-        """Yield response tokens one at a time from Ollama's streaming chat API."""
-        payload = {"model": model, "messages": messages, "stream": True}
+        """Streams generation tokens asynchronously with disconnection fault-tolerance."""
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "stream": True,
+            "options": {"temperature": temperature}
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+
+        client = self._get_client()
 
         try:
-            async with httpx.AsyncClient(timeout=None) as client:
-                async with client.stream(
-                    "POST", f"{self.base_url}/api/chat", json=payload
-                ) as response:
-                    if response.status_code != 200:
-                        body = await response.aread()
-                        raise OllamaError(
-                            f"Ollama returned {response.status_code}: {body.decode(errors='ignore')}"
-                        )
+            async with client.stream("POST", "/api/generate", json=payload) as response:
+                if response.status_code != 200:
+                    yield f"[Error: Ollama status {response.status_code}]"
+                    return
 
-                    async for line in response.aiter_lines():
-                        if not line.strip():
-                            continue
+                async for line in response.aiter_lines():
+                    if line:
                         try:
                             chunk = json.loads(line)
+                            token = chunk.get("response", "")
+                            if token:
+                                yield token
                         except json.JSONDecodeError:
                             continue
-
-                        if chunk.get("error"):
-                            raise OllamaError(chunk["error"])
-
-                        content = chunk.get("message", {}).get("content", "")
-                        if content:
-                            yield content
-
-                        if chunk.get("done"):
-                            break
-        except httpx.ConnectError as exc:
-            raise OllamaError(
-                f"Could not connect to Ollama at {self.base_url}. Is it running?"
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise OllamaError(f"Ollama request failed: {exc}") from exc
+        except (httpx.TransportError, httpx.HTTPError) as e:
+            logger.error(f"Ollama connection dropped during generation: {e}")
+            yield "\n[Error: Ollama service disconnected mid-generation]"
+        except Exception as e:
+            logger.error(f"Unexpected streaming exception: {e}")
+            yield f"\n[Stream Error: {str(e)}]"
 
 
 ollama_client = OllamaClient()
