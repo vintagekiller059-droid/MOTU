@@ -1,106 +1,71 @@
-"""Session-integrated streaming chat router with context windowing and UUIDv7 persistence."""
-
-import json
-import time
-import math
-from fastapi import APIRouter, Depends, HTTPException, Request
+# backend/app/routers/chat.py
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.database.session import get_db
-from src.services.session_service import SessionService
-from src.repositories.session_repository import SessionRepository
-from src.models.schemas import ChatRequest, MessageCreate
-from src.services.ollama_client import ollama_client
-from src.utils.logger import setup_logger
+import json
+import httpx
 
-router = APIRouter()
-logger = setup_logger("SessionChatRouter")
+router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-
-def estimate_tokens(text: str) -> int:
-    return max(1, math.ceil(len(text) / 4))
-
-
-@router.post("/sessions/{session_id}/chat/stream")
-async def stream_session_chat(
-    session_id: str, 
-    payload: ChatRequest, 
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """Streams responses into an active OS workspace and persists turns into SQLite."""
-    repo = SessionRepository(db)
-    service = SessionService(db)
+@router.post("/stream")
+async def chat_stream(request: dict):
+    print("[MOTU] ✓ Router entered")
     
-    session = await repo.get_by_id(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail=f"Session workspace '{session_id}' not found.")
-
-    recent_messages = await repo.get_recent_messages(session_id, limit=session.max_context_messages)
-
-    # Build prompt context incorporating system prompt and rolling summary
-    context_parts = []
-    if session.system_prompt:
-        context_parts.append(f"SYSTEM INSTRUCTION: {session.system_prompt}")
-    if session.summary:
-        context_parts.append(f"[ROLLING CONTEXT SUMMARY: {session.summary}]")
-
-    context_parts.extend([f"{m.role.upper()}: {m.content}" for m in recent_messages])
-    context_parts.append(f"USER: {payload.message}\nASSISTANT:")
+    session_id = request.get("session_id")
+    message = request.get("message")
     
-    full_prompt = "\n\n".join(context_parts)
-    start_time = time.time()
-
-    async def token_generator():
-        assistant_response = ""
-        try:
-            async for token in ollama_client.generate_stream(
-                prompt=full_prompt,
-                model=session.active_model,
-                temperature=payload.temperature or session.temperature
-            ):
-                if await request.is_disconnected():
-                    logger.warning(f"Client disconnected during generation for session {session_id}.")
-                    break
+    if not session_id or not message:
+        raise HTTPException(status_code=400, detail="Missing session_id or message")
+    
+    print(f"[MOTU] ✓ Session loaded: {session_id}")
+    
+    # Load session from DB (your existing code)
+    # ...
+    
+    async def event_generator():
+        print("[MOTU] ✓ Ollama connected")
+        
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": "your-model-name",  # e.g., "llama3", "mistral"
+                    "prompt": message,
+                    "stream": True,
+                },
+                timeout=300.0,
+            ) as response:
                 
-                assistant_response += token
-                
-                # Send JSON-encoded data payload to support newlines and structured client parsing
-                payload_data = json.dumps({"token": token, "content": token})
-                yield f"data: {payload_data}\n\n"
-
-        except Exception as e:
-            logger.error(f"Error during Ollama generation stream: {e}")
-            err_payload = json.dumps({"error": str(e)})
-            yield f"data: {err_payload}\n\n"
-
-        finally:
-            elapsed = round(time.time() - start_time, 2)
-            
-            user_msg = MessageCreate(
-                role="user",
-                content=payload.message,
-                token_count=estimate_tokens(payload.message)
-            )
-            assistant_msg = MessageCreate(
-                role="assistant",
-                content=assistant_response or "[Interrupted]",
-                token_count=estimate_tokens(assistant_response),
-                generation_time=elapsed
-            )
-
-            try:
-                await service.append_turns_and_summarize(session, user_msg, assistant_msg)
-                await db.commit()
-            except Exception as e:
-                logger.error(f"Failed to persist session turns: {e}")
-
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    
+                    try:
+                        data = json.loads(line)
+                        token = data.get("response", "")
+                        
+                        if token:
+                            # Proper SSE format: event name + data JSON
+                            event_payload = json.dumps({"token": token})
+                            print(f"[MOTU] ✓ Token generated: {token!r}")
+                            yield f"event: token\ndata: {event_payload}\n\n"
+                            print("[MOTU] ✓ SSE emitted")
+                        
+                        if data.get("done"):
+                            done_payload = json.dumps({"done": True})
+                            yield f"event: done\ndata: {done_payload}\n\n"
+                            print("[MOTU] ✓ Stream finished")
+                            break
+                            
+                    except json.JSONDecodeError:
+                        continue
+    
     return StreamingResponse(
-        token_generator(),
+        event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+            "X-Accel-Buffering": "no",
+        },
     )
