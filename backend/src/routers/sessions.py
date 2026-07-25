@@ -1,84 +1,107 @@
-"""REST endpoints for OS Session Workspace management."""
+"""Session management endpoints."""
 
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.database.session import get_db
-from src.services.session_service import SessionService
-from src.repositories.session_repository import SessionRepository
-from src.models.schemas import (
-    SessionCreate, SessionUpdate, SessionResponse, 
-    SessionDetailResponse, SessionListResponse, MessageResponse
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import select, func
+
+from deps import get_db
+from idgen import uuid7
+from orm import Session as SessionModel, Message
+from schemas import (
+    SessionCreate,
+    SessionResponse,
+    SessionDetailResponse,
+    SessionListResponse,
+    MessageResponse,
 )
 
 router = APIRouter()
 
 
-@router.post("/sessions", response_model=SessionResponse, status_code=201)
-async def create_session(payload: SessionCreate, db: AsyncSession = Depends(get_db)):
-    """Creates a new workspace session with UUIDv7 ID."""
-    service = SessionService(db)
-    session = await service.create_session(payload)
-    await db.commit()
-    return session
-
-
 @router.get("/sessions", response_model=SessionListResponse)
-async def list_sessions(
-    include_archived: bool = Query(default=False),
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    db: AsyncSession = Depends(get_db)
-):
-    """Lists sessions ordered by pinned status and last access timestamp."""
-    repo = SessionRepository(db)
-    sessions, total = await repo.list_sessions(include_archived=include_archived, limit=limit, offset=offset)
-    return SessionListResponse(sessions=sessions, total_count=total)
+async def list_sessions(db: Session = Depends(get_db)) -> SessionListResponse:
+    stmt = select(SessionModel).order_by(SessionModel.updated_at.desc())
+    sessions = db.execute(stmt).scalars().all()
+
+    result = []
+    for s in sessions:
+        msg_count = db.execute(
+            select(func.count(Message.id)).where(Message.session_id == s.id)
+        ).scalar_one()
+        result.append(SessionResponse(
+            id=s.id,
+            title=s.title,
+            model=s.model,
+            created_at=s.created_at,
+            updated_at=s.updated_at,
+            message_count=msg_count,
+        ))
+
+    return SessionListResponse(sessions=result)
 
 
-@router.get("/sessions/search", response_model=List[SessionResponse])
-async def search_sessions(q: str = Query(..., min_length=1), db: AsyncSession = Depends(get_db)):
-    """Searches workspace titles, summaries, or message contents."""
-    repo = SessionRepository(db)
-    return await repo.search_sessions(q)
+@router.post("/sessions", response_model=SessionResponse)
+async def create_session(
+    data: SessionCreate,
+    db: Session = Depends(get_db),
+) -> SessionResponse:
+    session = SessionModel(
+        id=uuid7(),
+        title=data.title or "New Chat",
+        model=data.model or "qwen2.5:1.5b",
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    return SessionResponse(
+        id=session.id,
+        title=session.title,
+        model=session.model,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        message_count=0,
+    )
 
 
 @router.get("/sessions/{session_id}", response_model=SessionDetailResponse)
 async def get_session(
-    session_id: str, 
-    window: int = Query(default=20, ge=1, le=100), 
-    db: AsyncSession = Depends(get_db)
-):
-    """Retrieves session details and recent message history window."""
-    service = SessionService(db)
-    try:
-        session, messages = await service.get_session_detail(session_id, window=window)
-        msg_responses = [MessageResponse.model_validate(m) for m in messages]
-        resp = SessionDetailResponse.model_validate(session)
-        resp.messages = msg_responses
-        return resp
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    session_id: str,
+    db: Session = Depends(get_db),
+) -> SessionDetailResponse:
+    session = db.get(SessionModel, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
 
+    messages = [
+        MessageResponse(
+            id=m.id,
+            session_id=m.session_id,
+            role=m.role,
+            content=m.content,
+            created_at=m.created_at,
+        )
+        for m in session.messages
+    ]
 
-@router.patch("/sessions/{session_id}", response_model=SessionResponse)
-async def update_session(session_id: str, payload: SessionUpdate, db: AsyncSession = Depends(get_db)):
-    """Updates session parameters (system prompt, temperature, pinned status)."""
-    service = SessionService(db)
-    try:
-        session = await service.update_session(session_id, payload)
-        await db.commit()
-        return session
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return SessionDetailResponse(
+        id=session.id,
+        title=session.title,
+        model=session.model,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        messages=messages,
+    )
 
 
 @router.delete("/sessions/{session_id}", status_code=204)
-async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
-    """Soft deletes a session workspace."""
-    repo = SessionRepository(db)
-    success = await repo.soft_delete(session_id)
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
-    await db.commit()
-    return None
+async def delete_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+) -> None:
+    session = db.get(SessionModel, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    db.delete(session)
+    db.commit()

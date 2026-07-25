@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useUIStore } from '../stores/ui-store';
 
 interface Message {
@@ -9,58 +9,156 @@ interface Message {
 }
 
 export const RightPanel: React.FC = () => {
-  const { currentState, setState } = useUIStore();
+  const { currentMode, setMode } = useUIStore();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       sender: 'motu',
       text: 'MOTU System Initialized. Local neural engine online.',
-      timestamp: '20:23',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto scroll chat to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (e?: React.FormEvent) => {
+  const handleSend = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isStreaming) return;
 
+    const userText = input.trim();
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      text: input,
+      text: userText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    setIsStreaming(true);
+    if (setMode) setMode('thinking');
 
-    if (setState) setState('thinking');
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: userText,
+        }),
+      });
 
-    // Simulated Response Stream
-    setTimeout(() => {
-      if (setState) setState('speaking');
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'motu',
-        text: 'Processing query through Local Sovereign Architecture. Context vector analyzed.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
-      setTimeout(() => {
-        if (setState) setState('idle');
-      }, 2000);
-    }, 1000);
-  };
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
 
-  const activeState = currentState ? String(currentState).toUpperCase() : 'IDLE';
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let assistantText = '';
+      let assistantMsgId: string | null = null;
+      let hasReceivedToken = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+
+          const jsonStr = trimmed.slice(6);
+          if (jsonStr === '[DONE]') continue;
+
+          try {
+            const event = JSON.parse(jsonStr);
+
+            if (event.error) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: Date.now().toString(),
+                  sender: 'motu',
+                  text: `Error: ${event.error}`,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                },
+              ]);
+              break;
+            }
+
+            if (event.token !== undefined) {
+              if (!hasReceivedToken) {
+                hasReceivedToken = true;
+                if (setMode) setMode('speaking');
+                assistantMsgId = `assistant-${Date.now()}`;
+                assistantText = event.token;
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: assistantMsgId!,
+                    sender: 'motu',
+                    text: event.token,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  },
+                ]);
+              } else {
+                assistantText += event.token;
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMsgId
+                      ? { ...msg, text: assistantText }
+                      : msg
+                  )
+                );
+              }
+            }
+
+            if (event.done) {
+              if (event.session_id) {
+                setSessionId(event.session_id);
+              }
+              break;
+            }
+          } catch {
+            // Ignore malformed lines
+          }
+        }
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: 'motu',
+          text: err instanceof Error ? err.message : 'Connection failed. Is the backend running?',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } finally {
+      setIsStreaming(false);
+      if (setMode) setMode('idle');
+    }
+  }, [input, isStreaming, sessionId, setMode]);
+
+  const activeState = currentMode ? String(currentMode).toUpperCase() : 'IDLE';
 
   return (
     <aside className="w-[360px] h-full glass-panel border-l border-cyan-500/10 flex flex-col justify-between p-5 z-20 box-border overflow-hidden">
@@ -141,12 +239,14 @@ export const RightPanel: React.FC = () => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Command MOTU..."
-            className="w-full bg-slate-950/80 border border-cyan-500/20 focus:border-cyan-400/60 rounded-xl py-2.5 pl-3.5 pr-10 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all duration-300"
+            placeholder={isStreaming ? 'MOTU is thinking...' : 'Command MOTU...'}
+            disabled={isStreaming}
+            className="w-full bg-slate-950/80 border border-cyan-500/20 focus:border-cyan-400/60 rounded-xl py-2.5 pl-3.5 pr-10 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all duration-300 disabled:opacity-50"
           />
           <button
             type="submit"
-            className="absolute right-2.5 p-1 text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer"
+            disabled={isStreaming}
+            className="absolute right-2.5 p-1 text-cyan-400 hover:text-cyan-200 transition-colors cursor-pointer disabled:opacity-50"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <line x1="22" y1="2" x2="11" y2="13" />

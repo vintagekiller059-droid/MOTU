@@ -1,38 +1,29 @@
-"""Centralized application configuration loading from environment or defaults."""
+"""Application configuration."""
 
+import os
+from dataclasses import dataclass
 from pathlib import Path
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
-    """System-wide backend configuration settings."""
-
-    # Network
+@dataclass(frozen=True)
+class Settings:
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    DEBUG: bool = False
-
-    # Ollama Local Node
     OLLAMA_URL: str = "http://localhost:11434"
     MODEL_NAME: str = "qwen2.5:1.5b"
-
-    # SQLite Database Configuration
-    DATABASE_PATH: Path = Path("./motu_system.db")
-
-    # Logging
+    DATABASE_PATH: Path = Path("./motu.db")
     LOG_LEVEL: str = "INFO"
 
-    # Engine Feature Flags
-    ENABLE_MEMORY: bool = True
-    ENABLE_VISION: bool = False
-    ENABLE_TOOLS: bool = False
-    ENABLE_VOICE: bool = False
+    @classmethod
+    def from_env(cls) -> "Settings":
+        return cls(
+            HOST=os.getenv("MOTU_HOST", cls.HOST),
+            PORT=int(os.getenv("MOTU_PORT", cls.PORT)),
+            OLLAMA_URL=os.getenv("MOTU_OLLAMA_URL", cls.OLLAMA_URL),
+            MODEL_NAME=os.getenv("MOTU_MODEL_NAME", cls.MODEL_NAME),
+            DATABASE_PATH=Path(os.getenv("MOTU_DATABASE_PATH", str(cls.DATABASE_PATH))),
+            LOG_LEVEL=os.getenv("MOTU_LOG_LEVEL", cls.LOG_LEVEL),
+        )
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
 
-
-settings = Settings()
+settings = Settings.from_env()

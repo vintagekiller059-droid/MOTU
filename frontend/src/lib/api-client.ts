@@ -2,7 +2,7 @@
 
 import type { MemoryEntry, MemorySearchResult, ModelInfo, Session, SystemHealth } from '../types'
 
-const BASE_URL = 'http://localhost:8000/api/v1'
+const BASE_URL = 'http://localhost:8000/api'
 
 class ApiError extends Error {
   constructor(
@@ -56,7 +56,7 @@ export const apiClient = {
     ),
 
   sendMessage: (params: { sessionId?: string; message: string; model?: string }) =>
-    request<{ session_id: string; message_id: string }>('/chat', {
+    request<{ session_id: string; message_id: string }>('/chat/send', {
       method: 'POST',
       body: JSON.stringify({
         session_id: params.sessionId,

@@ -1,55 +1,55 @@
-"""MOTU Local AI Operating System Core Entry Point."""
+"""FastAPI application factory and lifespan management."""
 
-from contextlib import asynccontextmanager  # <-- ADD THIS MISSING IMPORT
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.config import settings
-from src.utils.logger import setup_logger
-from src.database.session import init_db
-from src.services.ollama_client import ollama_client
-from src.routers import chat, settings as settings_router, models, sessions
+from config import settings
+from db import init_db
+from ollama_client import close_client
+from routers import health, models, sessions, chat
 
-logger = setup_logger("Main")
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan management for initialization and clean teardown."""
-    logger.info("Starting MOTU Operating System Core...")
-    await init_db()
-    logger.info(f"Target local model configured: '{settings.MODEL_NAME}'")
-    
+    logger.info("MOTU Backend V2 starting up...")
+    init_db()
+    logger.info("Database initialized at %s", settings.DATABASE_PATH.resolve())
     yield
-    
-    logger.info("Closing persistent HTTP connections...")
-    await ollama_client.close()
-    logger.info("Stopping MOTU OS Core cleanly...")
+    logger.info("MOTU Backend V2 shutting down...")
+    await close_client()
 
 
 app = FastAPI(
-    title="MOTU Local AI OS Core",
-    description="OS-grade local AI session workspace engine",
+    title="MOTU Backend",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs" if settings.DEBUG else None
+    docs_url="/docs" if settings.LOG_LEVEL == "DEBUG" else None,
+    redoc_url="/redoc" if settings.LOG_LEVEL == "DEBUG" else None,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+   allow_origins=["http://localhost:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Route Mounting
-app.include_router(sessions.router, prefix="/api", tags=["OS Sessions Workspace"])
-app.include_router(chat.router, prefix="/api", tags=["Chat Engine"])
-app.include_router(settings_router.router, prefix="/api", tags=["Settings & Health"])
-app.include_router(models.router, prefix="/api", tags=["Model Management"])
+app.include_router(health.router, prefix="/api/v1")
+app.include_router(models.router, prefix="/api/v1")
+app.include_router(sessions.router, prefix="/api/v1")
+app.include_router(chat.router, prefix="/api/v1")
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
+@app.get("/")
+async def root():
+    return {"message": "MOTU Backend V2", "version": "1.0.0"}

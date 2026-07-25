@@ -19,7 +19,7 @@ class SessionService:
         self.repo = SessionRepository(db)
 
     async def create_session(self, payload: SessionCreate) -> SessionModel:
-        model_name = payload.active_model or settings.MODEL_NAME
+        model_name = payload.model or settings.MODEL_NAME
         return await self.repo.create_session(payload, active_model=model_name)
 
     async def get_session_detail(self, session_id: str, window: int = 20) -> Tuple[SessionModel, List[MessageModel]]:
@@ -36,18 +36,8 @@ class SessionService:
             
         if payload.title is not None:
             session.title = payload.title
-        if payload.active_model is not None:
-            session.active_model = payload.active_model
-        if payload.system_prompt is not None:
-            session.system_prompt = payload.system_prompt
-        if payload.temperature is not None:
-            session.temperature = payload.temperature
-        if payload.max_context_messages is not None:
-            session.max_context_messages = payload.max_context_messages
-        if payload.is_pinned is not None:
-            session.is_pinned = payload.is_pinned
-        if payload.is_archived is not None:
-            session.is_archived = payload.is_archived
+        if payload.model is not None:
+            session.model = payload.model
 
         return await self.repo.update_session(session)
 
@@ -64,38 +54,25 @@ class SessionService:
         # Check for first-turn title generation
         recent_msgs = await self.repo.get_recent_messages(session.id, limit=10)
         if len(recent_msgs) <= 2 and session.title == "New Companion Workspace":
-            await self._generate_title(session, user_payload.content)
+            await self._generate_title(session)
 
-        # Auto-summarize when message limit exceeds configured threshold
-        if len(recent_msgs) >= session.max_context_messages:
-            await self._generate_summary(session, recent_msgs)
-
-    async def _generate_title(self, session: SessionModel, text: str) -> None:
-        prompt = f"Summarize this prompt into a 3-5 word concise title. Return ONLY the title text:\n\n'{text}'"
+    async def _generate_title(self, session: SessionModel) -> None:
+        """Generates a concise title from the first user message."""
         try:
+            recent = await self.repo.get_recent_messages(session.id, limit=2)
+            user_msg = next((m for m in recent if m.role == "user"), None)
+            if not user_msg:
+                return
+
+            prompt = f"Generate a very short title (3-5 words) for this conversation: {user_msg.content}"
             title = ""
-            async for token in ollama_client.generate_stream(prompt=prompt, model=session.active_model):
+            async for token in ollama_client.generate_stream(prompt, session.model or settings.MODEL_NAME):
                 title += token
-            clean = title.strip().replace('"', '').replace('\n', '')
-            if clean:
-                session.title = clean[:255]
-                logger.info(f"Auto-generated workspace title: '{clean}'")
-        except Exception as e:
-            logger.warning(f"Failed to auto-generate title: {e}")
 
-    async def _generate_summary(self, session: SessionModel, messages: List[MessageModel]) -> None:
-        msgs_text = "\n".join([f"{m.role.upper()}: {m.content}" for m in messages])
-        prompt = (
-            f"Existing Summary: {session.summary or 'None'}\n\n"
-            f"Recent Context:\n{msgs_text}\n\n"
-            "Task: Generate a 2-3 sentence rolling context summary of key facts. Return ONLY the summary:"
-        )
-        try:
-            summary = ""
-            async for token in ollama_client.generate_stream(prompt=prompt, model=session.active_model):
-                summary += token
-            if summary.strip():
-                session.summary = summary.strip()
-                logger.info(f"Updated rolling context summary for session {session.id}")
-        except Exception as e:
-            logger.warning(f"Failed to update context summary: {e}")
+            session.title = title.strip()[:50] or "New Chat"
+            await self.repo.update_session(session)
+            logger.info(f"Auto-generated session title: '{session.title}'")
+        except Exception as exc:
+            logger.warning(f"Title generation failed: {exc}")
+            session.title = "New Chat"
+            await self.repo.update_session(session)
