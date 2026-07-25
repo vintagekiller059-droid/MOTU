@@ -1,9 +1,9 @@
 """SQLAlchemy ORM models."""
 
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
-from sqlalchemy import String, Text, Index, ForeignKey
+from sqlalchemy import String, Text, Index, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -22,6 +22,7 @@ class Session(Base):
     model: Mapped[str] = mapped_column(String(100), default="qwen2.5:1.5b")
     created_at: Mapped[datetime] = mapped_column(default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now)
+    message_count: Mapped[int] = mapped_column(Integer, default=0)
 
     messages: Mapped[List["Message"]] = relationship(
         back_populates="session",
@@ -41,6 +42,7 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    tokens: Mapped[Optional[int]] = mapped_column(Integer, default=None, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utc_now)
 
     session: Mapped["Session"] = relationship(back_populates="messages")
