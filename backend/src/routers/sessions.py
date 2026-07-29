@@ -1,5 +1,6 @@
 """Session management endpoints."""
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
@@ -16,6 +17,7 @@ from schemas import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/sessions", response_model=SessionListResponse)
@@ -37,6 +39,7 @@ async def list_sessions(db: Session = Depends(get_db)) -> SessionListResponse:
             message_count=msg_count,
         ))
 
+    logger.info("Listed %d sessions", len(result))
     return SessionListResponse(sessions=result)
 
 
@@ -54,6 +57,7 @@ async def create_session(
     db.commit()
     db.refresh(session)
 
+    logger.info("Created session: %s", session.id)
     return SessionResponse(
         id=session.id,
         title=session.title,
@@ -105,3 +109,4 @@ async def delete_session(
 
     db.delete(session)
     db.commit()
+    logger.info("Deleted session: %s", session_id)

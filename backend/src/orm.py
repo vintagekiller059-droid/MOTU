@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import String, Text, Index, ForeignKey, Integer
+from sqlalchemy import String, Text, Index, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -22,7 +22,6 @@ class Session(Base):
     model: Mapped[str] = mapped_column(String(100), default="qwen2.5:1.5b")
     created_at: Mapped[datetime] = mapped_column(default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now)
-    message_count: Mapped[int] = mapped_column(Integer, default=0)
 
     messages: Mapped[List["Message"]] = relationship(
         back_populates="session",
@@ -42,9 +41,18 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    tokens: Mapped[Optional[int]] = mapped_column(Integer, default=None, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utc_now)
 
     session: Mapped["Session"] = relationship(back_populates="messages")
 
     __table_args__ = (Index("idx_messages_session", "session_id", "created_at"),)
+
+
+# ── Future tables (created but not used in Phase 1) ───────────
+
+class Setting(Base):
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now)

@@ -6,6 +6,8 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
+# ── Messages ────────────────────────────────────────────────
+
 class MessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
@@ -14,6 +16,13 @@ class MessageResponse(BaseModel):
     content: str
     created_at: datetime
 
+
+class MessageCreate(BaseModel):
+    role: str
+    content: str
+
+
+# ── Sessions ────────────────────────────────────────────────
 
 class SessionCreate(BaseModel):
     title: Optional[str] = None
@@ -44,10 +53,22 @@ class SessionListResponse(BaseModel):
     sessions: List[SessionResponse]
 
 
+# ── Chat ────────────────────────────────────────────────────
+
 class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     message: str
 
+
+class ChatStreamEvent(BaseModel):
+    token: Optional[str] = None
+    done: bool = False
+    session_id: Optional[str] = None
+    message_id: Optional[str] = None
+    error: Optional[str] = None
+
+
+# ── Models ──────────────────────────────────────────────────
 
 class ModelInfo(BaseModel):
     name: str
@@ -64,6 +85,8 @@ class ActiveModelResponse(BaseModel):
     active_model: str
 
 
+# ── Health ──────────────────────────────────────────────────
+
 class HealthResponse(BaseModel):
     status: str
     version: str
@@ -72,3 +95,21 @@ class HealthResponse(BaseModel):
     memory_percent: float
     memory_used_gb: float
     ollama_connected: bool
+    database_connected: bool
+    active_model: str
+
+
+# ── Settings (Future) ───────────────────────────────────────
+
+class SettingsResponse(BaseModel):
+    theme: str = "dark"
+    model_default: str
+    max_tokens: int = 2048
+    temperature: float = 0.7
+
+
+class SettingsUpdate(BaseModel):
+    theme: Optional[str] = None
+    model_default: Optional[str] = None
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None

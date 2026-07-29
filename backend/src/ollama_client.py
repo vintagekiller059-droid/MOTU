@@ -20,6 +20,7 @@ def get_client() -> httpx.AsyncClient:
             base_url=settings.OLLAMA_URL,
             timeout=httpx.Timeout(120.0, connect=5.0),
         )
+        logger.info("Ollama client initialized: %s", settings.OLLAMA_URL)
     return _client
 
 
@@ -28,14 +29,21 @@ async def close_client() -> None:
     if _client is not None:
         await _client.aclose()
         _client = None
+        logger.info("Ollama client closed")
 
 
 async def check_health() -> bool:
     try:
         client = get_client()
         resp = await client.get("/api/tags", timeout=3.0)
-        return resp.status_code == 200
-    except Exception:
+        healthy = resp.status_code == 200
+        if healthy:
+            logger.debug("Ollama health check: OK")
+        else:
+            logger.warning("Ollama health check failed: HTTP %s", resp.status_code)
+        return healthy
+    except Exception as e:
+        logger.warning("Ollama health check failed: %s", e)
         return False
 
 
@@ -48,7 +56,7 @@ async def list_models() -> List[Dict[str, Any]]:
     models = []
     for m in data.get("models", []):
         name = m.get("name", "unknown")
-        size = m.get('size', 0)
+        size = m.get("size", 0)
         param_count = "unknown"
         if ":" in name:
             tag = name.split(":")[1]
@@ -60,6 +68,7 @@ async def list_models() -> List[Dict[str, Any]]:
             "parameter_count": param_count,
             "format": m.get("details", {}).get("format", "gguf"),
         })
+    logger.info("Listed %d models from Ollama", len(models))
     return models
 
 
@@ -69,6 +78,7 @@ async def stream_chat(
 ) -> AsyncGenerator[str, None]:
     client = get_client()
     model = model or settings.MODEL_NAME
+    logger.info("Starting chat stream with model: %s, messages: %d", model, len(messages))
 
     payload = {
         "model": model,
@@ -76,21 +86,29 @@ async def stream_chat(
         "stream": True,
     }
 
-    async with client.stream("POST", "/api/chat", json=payload) as resp:
-        resp.raise_for_status()
-        async for line in resp.aiter_lines():
-            if not line.strip():
-                continue
-            try:
-                data = json.loads(line)
-            except json.JSONDecodeError:
-                logger.warning("Ollama sent invalid JSON: %s", line)
-                continue
+    try:
+        async with client.stream("POST", "/api/chat", json=payload) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    logger.warning("Ollama sent invalid JSON: %s", line)
+                    continue
 
-            msg = data.get("message", {})
-            token = msg.get("content", "")
-            if token:
-                yield token
+                msg = data.get("message", {})
+                token = msg.get("content", "")
+                if token:
+                    yield token
 
-            if data.get("done"):
-                break
+                if data.get("done"):
+                    logger.info("Chat stream completed")
+                    break
+    except httpx.HTTPStatusError as e:
+        logger.error("Ollama HTTP error: %s", e)
+        raise
+    except Exception as e:
+        logger.error("Ollama streaming error: %s", e)
+        raise

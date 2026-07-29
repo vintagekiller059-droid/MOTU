@@ -29,5 +29,4 @@ Base = declarative_base()
 
 
 def init_db() -> None:
-    import orm  # noqa: F401 — registers Session & Message on Base.metadata
     Base.metadata.create_all(bind=engine)

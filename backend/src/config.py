@@ -13,6 +13,15 @@ class Settings:
     MODEL_NAME: str = "qwen2.5:1.5b"
     DATABASE_PATH: Path = Path("./motu.db")
     LOG_LEVEL: str = "INFO"
+    CORS_ORIGINS: list[str] = None
+
+    def __post_init__(self):
+        # CORS_ORIGINS must be mutable, so we handle it after frozen dataclass init
+        object.__setattr__(
+            self,
+            "CORS_ORIGINS",
+            os.getenv("MOTU_CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(","),
+        )
 
     @classmethod
     def from_env(cls) -> "Settings":

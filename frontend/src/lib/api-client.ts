@@ -2,7 +2,7 @@
 
 import type { MemoryEntry, MemorySearchResult, ModelInfo, Session, SystemHealth } from '../types'
 
-const BASE_URL = 'http://localhost:8000/api'
+const BASE_URL = 'http://localhost:8000/api/v1'
 
 class ApiError extends Error {
   constructor(
@@ -43,6 +43,8 @@ export const apiClient = {
       memory_percent: number
       memory_used_gb: number
       ollama_connected: boolean
+      database_connected: boolean
+      active_model: string
     }>('/health').then(
       (r): SystemHealth => ({
         status: r.status,
@@ -55,21 +57,8 @@ export const apiClient = {
       }),
     ),
 
-  sendMessage: (params: { sessionId?: string; message: string; model?: string }) =>
-    request<{ session_id: string; message_id: string }>('/chat/send', {
-      method: 'POST',
-      body: JSON.stringify({
-        session_id: params.sessionId,
-        message: params.message,
-        model: params.model,
-      }),
-    }),
-
-  streamUrl: (sessionId: string, model?: string) => {
-    const params = new URLSearchParams({ session_id: sessionId })
-    if (model) params.set('model', model)
-    return `${BASE_URL}/chat/stream?${params.toString()}`
-  },
+  // SSE streaming — returns the URL for EventSource/fetch
+  streamChatUrl: () => `${BASE_URL}/chat/stream`,
 
   listSessions: () =>
     request<{ sessions: RawSession[] }>('/sessions').then((r) =>
@@ -104,8 +93,11 @@ export const apiClient = {
   listModels: () =>
     request<{ models: RawModel[] }>('/models').then((r) => r.models.map(mapModel)),
 
+  getActiveModel: () =>
+    request<{ active_model: string }>('/models/active').then((r) => r.active_model),
+
   // ─────────────────────────────────────────────────────────
-  // Memory API
+  // Memory API (future — backend endpoints not yet implemented)
   // ─────────────────────────────────────────────────────────
 
   listMemories: () =>
