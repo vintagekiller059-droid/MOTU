@@ -9,16 +9,17 @@ import './styles/tokens.css';
 function App() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans selection:bg-cyan-500/30">
-      {/* Deep space background — isolated, never rerenders */}
       <NeuralSphere />
 
-      {/* Main layout */}
       <div className="relative z-10 flex h-full w-full">
         {/* Left Sidebar */}
         <Sidebar />
 
-        {/* Center Core — isolated from chat state, no pointer events */}
-        <main className="flex-1 flex items-center justify-center relative pointer-events-none">
+        {/* Center Core — scales when sidebar expands */}
+        <main className="flex-1 flex items-center justify-center relative pointer-events-none transition-all duration-300 ease-out will-change-transform"
+          style={{ transform: 'scale(1)', marginLeft: '80px' }}
+          id="main-content"
+        >
           <AICore />
         </main>
 

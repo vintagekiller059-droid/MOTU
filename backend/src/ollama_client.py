@@ -75,16 +75,34 @@ async def list_models() -> List[Dict[str, Any]]:
 async def stream_chat(
     messages: List[Dict[str, str]],
     model: str | None = None,
+    system: str | None = None,
 ) -> AsyncGenerator[str, None]:
+    """
+    Stream tokens from Ollama's /api/chat endpoint.
+
+    Uses BOTH the native `system` field AND includes system in messages array
+    for maximum identity override strength.
+    """
     client = get_client()
     model = model or settings.MODEL_NAME
     logger.info("Starting chat stream with model: %s, messages: %d", model, len(messages))
 
-    payload = {
+    payload: dict[str, Any] = {
         "model": model,
         "messages": messages,
         "stream": True,
+        "options": {
+            "temperature": 0.7,
+            "num_ctx": 4096,
+        }
     }
+
+    # ── CRITICAL: Send system prompt via BOTH methods for maximum strength ──
+    # Method 1: Ollama's native system field (overrides model's default system prompt)
+    # Method 2: system role in messages array (sets conversation context)
+    # Using both together is the only reliable way to override Qwen's identity
+    if system:
+        payload["system"] = system
 
     try:
         async with client.stream("POST", "/api/chat", json=payload) as resp:
