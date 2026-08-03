@@ -6,13 +6,16 @@ export const NeuralSphere: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     let animationId: number;
-    let width = (canvas.width = canvas.offsetWidth || 800);
-    let height = (canvas.height = canvas.offsetHeight || 600);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let width = (canvas.offsetWidth || 480);
+    let height = (canvas.offsetHeight || 480);
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
 
     interface Point {
       x: number;
@@ -23,15 +26,15 @@ export const NeuralSphere: React.FC = () => {
     }
 
     const points: Point[] = [];
-    const maxPoints = 65;
+    const maxPoints = 50;
 
     for (let i = 0; i < maxPoints; i++) {
       points.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        radius: Math.random() * 2 + 1,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: (Math.random() - 0.5) * 0.25,
+        radius: Math.random() * 1.5 + 0.5,
       });
     }
 
@@ -41,10 +44,10 @@ export const NeuralSphere: React.FC = () => {
       for (let i = 0; i < maxPoints; i++) {
         for (let j = i + 1; j < maxPoints; j++) {
           const dist = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y);
-          if (dist < 160) {
-            const alpha = (1 - dist / 160) * 0.25;
-            ctx.strokeStyle = `rgba(6, 182, 212, ${alpha})`;
-            ctx.lineWidth = 0.8;
+          if (dist < 140) {
+            const alpha = (1 - dist / 140) * 0.15;
+            ctx.strokeStyle = `rgba(0, 229, 255, ${alpha})`;
+            ctx.lineWidth = 0.6;
             ctx.beginPath();
             ctx.moveTo(points[i].x, points[i].y);
             ctx.lineTo(points[j].x, points[j].y);
@@ -56,9 +59,9 @@ export const NeuralSphere: React.FC = () => {
       points.forEach((p) => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#38bdf8';
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = '#06b6d4';
+        ctx.fillStyle = 'rgba(0, 229, 255, 0.5)';
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = 'rgba(0, 229, 255, 0.3)';
         ctx.fill();
         ctx.shadowBlur = 0;
 
@@ -76,8 +79,11 @@ export const NeuralSphere: React.FC = () => {
 
     const handleResize = () => {
       if (!canvas) return;
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
+      width = canvas.offsetWidth;
+      height = canvas.offsetHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
     };
     window.addEventListener('resize', handleResize);
 
@@ -87,5 +93,10 @@ export const NeuralSphere: React.FC = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-80" />;
+  return (
+    <canvas 
+      ref={canvasRef} 
+      className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-60" 
+    />
+  );
 };

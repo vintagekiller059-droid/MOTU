@@ -6,6 +6,7 @@ interface Particle {
   speed: number;
   size: number;
   alpha: number;
+  color: string;
 }
 
 export const FloatingParticles: React.FC = () => {
@@ -18,17 +19,23 @@ export const FloatingParticles: React.FC = () => {
     if (!ctx) return;
 
     let animId: number;
-    const size = 600;
-    canvas.width = size;
-    canvas.height = size;
+    const size = 480;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+    ctx.scale(dpr, dpr);
+    
     const center = size / 2;
 
-    const particles: Particle[] = Array.from({ length: 35 }, () => ({
+    const particles: Particle[] = Array.from({ length: 24 }, (_, i) => ({
       angle: Math.random() * Math.PI * 2,
-      radius: 80 + Math.random() * 180,
-      speed: (Math.random() * 0.002 + 0.0005) * (Math.random() > 0.5 ? 1 : -1),
-      size: Math.random() * 1.5 + 0.5,
-      alpha: Math.random() * 0.6 + 0.2,
+      radius: 70 + Math.random() * 150,
+      speed: (Math.random() * 0.0015 + 0.0004) * (Math.random() > 0.5 ? 1 : -1),
+      size: Math.random() * 1.2 + 0.4,
+      alpha: Math.random() * 0.5 + 0.15,
+      color: i % 7 === 0 ? '168, 85, 247' : '0, 229, 255', // occasional purple
     }));
 
     const draw = () => {
@@ -41,7 +48,7 @@ export const FloatingParticles: React.FC = () => {
 
         ctx.beginPath();
         ctx.arc(x, y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
+        ctx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
         ctx.fill();
       });
 
@@ -52,5 +59,10 @@ export const FloatingParticles: React.FC = () => {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0" />;
+  return (
+    <canvas 
+      ref={canvasRef} 
+      className="absolute inset-0 w-full h-full pointer-events-none z-0" 
+    />
+  );
 };

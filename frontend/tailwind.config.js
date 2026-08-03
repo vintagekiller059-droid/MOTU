@@ -18,8 +18,8 @@ export default {
           warning: '#FBBF24'
         },
         os: {
-          bg: '#050816',
-          card: 'rgba(13, 17, 34, 0.45)'
+          bg: '#050505',
+          card: 'rgba(255, 255, 255, 0.02)'
         }
       },
       animation: {
@@ -31,6 +31,11 @@ export default {
         'pulse-subtle': 'pulseSubtle 6s ease-in-out infinite',
         'glow-cyan': 'glowCyan 4s ease-in-out infinite',
         'glow-purple': 'glowPurple 6s ease-in-out infinite',
+        'scanner': 'scanner-sweep 4s ease-in-out infinite',
+        'ring-speak-1': 'ring-speak-1 2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite',
+        'ring-speak-2': 'ring-speak-2 2.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite 0.2s',
+        'ring-speak-3': 'ring-speak-3 2.4s cubic-bezier(0.34, 1.56, 0.64, 1) infinite 0.4s',
+        'ring-think': 'ring-think 8s linear infinite',
       },
       keyframes: {
         breathe: {
@@ -56,9 +61,30 @@ export default {
         glowPurple: {
           '0%, 100%': { filter: 'drop-shadow(0 0 15px rgba(124, 92, 255, 0.2))' },
           '50%': { filter: 'drop-shadow(0 0 35px rgba(124, 92, 255, 0.4))' },
-        }
-      }
+        },
+        'scanner-sweep': {
+          '0%': { transform: 'translateX(-50%) rotate(-15deg)', opacity: '0' },
+          '50%': { opacity: '1' },
+          '100%': { transform: 'translateX(50%) rotate(15deg)', opacity: '0' },
+        },
+        'ring-speak-1': {
+          '0%, 100%': { transform: 'translateY(0) scale(1)', opacity: '0.8' },
+          '50%': { transform: 'translateY(-20px) scale(1.02)', opacity: '1' },
+        },
+        'ring-speak-2': {
+          '0%, 100%': { transform: 'translateY(0) scale(1)', opacity: '0.6' },
+          '50%': { transform: 'translateY(-40px) scale(1.04)', opacity: '0.9' },
+        },
+        'ring-speak-3': {
+          '0%, 100%': { transform: 'translateY(0) scale(1)', opacity: '0.4' },
+          '50%': { transform: 'translateY(-60px) scale(1.06)', opacity: '0.8' },
+        },
+        'ring-think': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.7' },
+          '50%': { transform: 'scale(1.03)', opacity: '0.9' },
+        },
+      },
     },
   },
   plugins: [],
-} satisfies Config;
+}

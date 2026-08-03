@@ -7,7 +7,6 @@ import { useChatStore } from '../stores/app-store';
 import { useSystemStore } from '../stores/system-store';
 import { apiClient } from '../lib/api-client';
 
-// ── Memoized Session Item ──
 const SessionItem = memo(({
   session,
   isActive,
@@ -35,12 +34,12 @@ const SessionItem = memo(({
       onClick={() => onSelect(session.id)}
       className={`group relative p-3 rounded-xl cursor-pointer transition-all duration-250 border ${
         isActive
-          ? 'bg-cyan-500/[0.08] border-cyan-500/30 shadow-[0_0_16px_rgba(0,229,255,0.06)]'
+          ? 'bg-cyan-500/[0.06] border-cyan-500/20 shadow-[0_0_20px_rgba(0,229,255,0.04)]'
           : 'bg-white/[0.02] border-transparent hover:bg-white/[0.04] hover:border-white/[0.06]'
       } ${isDeleting ? 'opacity-0 -translate-x-5 scale-95' : ''}`}
     >
       {isActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-cyan-400 rounded-r-full shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-cyan-400 rounded-r-full shadow-[0_0_12px_rgba(6,182,212,0.4)]" />
       )}
       <div className="flex items-start justify-between pl-2">
         <div className="flex-1 min-w-0">
@@ -50,9 +49,9 @@ const SessionItem = memo(({
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-[9px] text-slate-500 font-mono">{session.messageCount} msgs</span>
             <span className="w-0.5 h-0.5 rounded-full bg-slate-600" />
-            <span className="text-[9px] text-slate-600">{formatTime(session.updatedAt)}</span>
+            <span className="text-[9px] text-slate-500">{formatTime(session.updatedAt)}</span>
           </div>
-          <div className="text-[9px] text-slate-600 mt-0.5 font-mono">{session.model}</div>
+          <div className="text-[9px] text-slate-600/70 mt-0.5 font-mono">{session.model}</div>
         </div>
         <button
           onClick={handleDelete}
@@ -93,7 +92,6 @@ export const Sidebar: React.FC = () => {
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Health polling
   useEffect(() => {
     const checkHealth = async () => {
       try {
@@ -214,12 +212,12 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* Collapsed Dock */}
+      {/* Collapsed Dock - enhanced glass */}
       <div 
-        className="fixed left-0 top-0 h-full w-20 z-40 flex flex-col items-center py-6 gap-6 bg(rgba(5,8,20,0.25)) backdrop-blur-[16px] border-r border-white/[0.04]"
+        className="fixed left-0 top-0 h-full w-20 z-40 flex flex-col items-center py-6 gap-6 bg-white/[0.04] backdrop-blur-[16px] border-r border-white/[0.06] shadow-[0_0_30px_rgba(0,0,0,0.2)]"
         onMouseEnter={() => setIsExpanded(true)}
       >
-        <div className="w-10 h-10 rounded-full border border-[#00E5FF]/30 flex items-center justify-center font-mono text-xs text-[#00E5FF] shadow-[0_0_12px_rgba(0,229,255,0.15)] bg-black/40">
+        <div className="w-10 h-10 rounded-full border border-[#00E5FF]/30 flex items-center justify-center font-mono text-xs text-[#00E5FF] shadow-[0_0_16px_rgba(0,229,255,0.15)] bg-black/40">
           M
         </div>
 
@@ -235,7 +233,7 @@ export const Sidebar: React.FC = () => {
                 className={`relative p-3 rounded-xl transition-all duration-300 group ${isSelected ? 'text-[#00E5FF]' : 'text-[#8EA7C2] hover:text-white'}`}
               >
                 {isSelected && (
-                  <div className="absolute inset-0 bg-[#00E5FF]/5 border border-[#00E5FF]/20 rounded-xl shadow-[0_0_12px_rgba(0,229,255,0.1)]" />
+                  <div className="absolute inset-0 bg-[#00E5FF]/5 border border-[#00E5FF]/20 rounded-xl shadow-[0_0_16px_rgba(0,229,255,0.08)]" />
                 )}
                 <Icon className="w-4 h-4 relative z-10 transition-all duration-300" />
               </button>
@@ -253,19 +251,18 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Expanded Panel */}
+      {/* Expanded Panel - enhanced glass + better spacing */}
       <div
-        className={`fixed left-20 top-0 h-full w-[280px] z-30 bg(rgba(5,8,20,0.7)) backdrop-blur-[24px] border-r border-white/[0.04] flex flex-col transition-all duration-300 ease-out ${isExpanded ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 pointer-events-none'}`}
+        className={`fixed left-20 top-0 h-full w-[280px] z-30 bg-white/[0.04] backdrop-blur-[24px] border-r border-white/[0.06] flex flex-col transition-all duration-300 ease-out ${isExpanded ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 pointer-events-none'}`}
         onMouseLeave={() => setIsExpanded(false)}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
           <div>
             <h3 className="text-[10px] tracking-[0.2em] text-cyan-400 font-mono uppercase">
               {sidebarTab === 'sessions' ? 'Conversations' : 'Model Registry'}
             </h3>
             <div className="flex items-center gap-2 mt-1">
-              <div className={`w-1.5 h-1.5 rounded-full ${backendOnline ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]' : 'bg-red-400'}`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${backendOnline ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-red-400'}`} />
               <span className="text-[9px] text-slate-500 font-mono">
                 {backendOnline ? 'SYSTEM ONLINE' : 'SYSTEM OFFLINE'}
               </span>
@@ -274,7 +271,7 @@ export const Sidebar: React.FC = () => {
           {sidebarTab === 'sessions' && (
             <button
               onClick={createNewChat}
-              className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_12px_rgba(0,229,255,0.15)] transition-all duration-300"
+              className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_16px_rgba(0,229,255,0.1)] transition-all duration-300"
               title="New Chat"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -282,7 +279,6 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-cyan-500/10">
           {sidebarTab === 'sessions' && (
             <>
@@ -314,7 +310,7 @@ export const Sidebar: React.FC = () => {
                   onClick={() => setSelectedModel(model.name)}
                   className={`p-3 rounded-xl cursor-pointer transition-all duration-250 border ${
                     selectedModel === model.name
-                      ? 'bg-cyan-500/[0.08] border-cyan-500/30 shadow-[0_0_16px_rgba(0,229,255,0.06)]'
+                      ? 'bg-cyan-500/[0.06] border-cyan-500/20 shadow-[0_0_16px_rgba(0,229,255,0.04)]'
                       : 'bg-white/[0.02] border-transparent hover:bg-white/[0.04]'
                   }`}
                 >
@@ -323,15 +319,15 @@ export const Sidebar: React.FC = () => {
                       {model.name}
                     </span>
                     {selectedModel === model.name && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#00E5FF]" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00E5FF]" />
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-[9px] text-slate-500 font-mono">{model.parameterCount}</span>
                     <span className="w-0.5 h-0.5 rounded-full bg-slate-600" />
-                    <span className="text-[9px] text-slate-600">{(model.size / 1e9).toFixed(2)} GB</span>
+                    <span className="text-[9px] text-slate-500">{(model.size / 1e9).toFixed(2)} GB</span>
                   </div>
-                  <div className="text-[9px] text-slate-600 mt-0.5 font-mono uppercase">{model.format}</div>
+                  <div className="text-[9px] text-slate-600/70 mt-0.5 font-mono uppercase">{model.format}</div>
                 </div>
               ))}
             </div>

@@ -8,7 +8,10 @@ import './styles/tokens.css';
 
 function App() {
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans selection:bg-cyan-500/30">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-cyan-500/30">
+      {/* Matte black with subtle radial gradient - GPU friendly */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(20,25,35,0.3)_0%,_rgba(5,5,5,1)_70%)] pointer-events-none" />
+      
       <NeuralSphere />
 
       <div className="relative z-10 flex h-full w-full">
