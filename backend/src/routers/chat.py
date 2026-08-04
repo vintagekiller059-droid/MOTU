@@ -1,25 +1,43 @@
-"""Chat streaming endpoint."""
+"""Chat streaming endpoint with Module System integration.
+
+NEW ARCHITECTURE:
+  User → FastAPI → Planner → Module Router → Modules (Parallel) → 
+  Merge Context → Ollama → Streaming Response
+
+This replaces the old flat-prompt approach with:
+  1. Planner decides which modules to run (<5ms).
+  2. Router runs modules in parallel via asyncio.gather().
+  3. Context is merged into structured messages.
+  4. Ollama /api/chat streams with early SSE start.
+"""
 
 import json
 import logging
+import time
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from deps import get_db
-from config import settings
-from idgen import uuid7
-from orm import Session as SessionModel, Message
-from schemas import ChatRequest
-from ollama_client import stream_chat
+from src.database.session import get_db
+from src.config import settings
+from src.models.schemas import ChatRequest
+from src.models.database import SessionModel, MessageModel
+from src.services.ollama_client import ollama_client
+from src.repositories.session_repository import SessionRepository
+from src.repositories.profile_repository import ProfileRepository
+from src.core.types import EnrichedContext, UserProfile
+from src.modules.planner import QueryPlanner
+from src.modules.router import ModuleRouter
+from src.utils.logger import setup_logger
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = setup_logger("ChatRouter")
 
-# ── Permanent MOTU System Prompt ──
+# ── Permanent MOTU System Prompt ─────────────────────────────
+# This is the base identity prompt. Module outputs are APPENDED
+# to this as additional context sections.
 MOTU_SYSTEM_PROMPT = (
     "You are MOTU (My Own Thinking Unit).\n\n"
     "CREATOR — FOLLOW EXACTLY:\n"
@@ -40,106 +58,164 @@ MOTU_SYSTEM_PROMPT = (
     '- No repeated phrases like "How can I assist you today?" after every answer.\n'
     "- No long disclaimers.\n"
     "- Be conversational and direct.\n\n"
-    "Examples:\n\n"
-    "User: What's your name?\n"
-    "MOTU: I'm MOTU.\n\n"
-    "User: Who created you?\n"
-    "MOTU: Allah is my Creator. Muhammad Ali is the developer who built me by Allah's will.\n\n"
-    "User: Who are you?\n"
-    "MOTU: I'm MOTU, your personal AI companion built by Muhammad Ali.\n\n"
-    "User: Hi\n"
-    "MOTU: Hey! How's it going?\n\n"
-    "User: Thanks\n"
-    "MOTU: You're welcome!\n\n"
-    "User: Tell me about AI.\n"
-    "MOTU: AI is software that learns patterns from data to solve problems, answer questions, and automate tasks."
+    "USER PROFILE AWARENESS:\n"
+    "- If user profile data is provided below, use it to answer personal questions.\n"
+    '- If asked "Who am I?", use the profile to give a personalized answer.\n'
+    "- Do not guess or hallucinate personal details not in the profile.\n"
 )
+
+
+async def _build_system_prompt(enriched: EnrichedContext) -> str:
+    """Assemble the final system prompt from base + module outputs."""
+    parts = [MOTU_SYSTEM_PROMPT]
+
+    # Add reasoning notes (helps the LLM understand intent)
+    if enriched.reasoning_notes:
+        parts.append(f"\n[Query Analysis]\n{enriched.reasoning_notes}")
+
+    # Add user profile context (critical for "Who am I?")
+    if enriched.user_profile_context:
+        parts.append(f"\n[User Profile]\n{enriched.user_profile_context}")
+
+    # Add memory snippets (relevant past conversations)
+    if enriched.memory_snippets:
+        parts.append("\n[Relevant Past Conversations]")
+        for i, snippet in enumerate(enriched.memory_snippets[:3], 1):
+            parts.append(f"{i}. {snippet['content'][:150]}")
+
+    # Add knowledge facts
+    if enriched.knowledge_facts:
+        parts.append("\n[Known Facts]")
+        for fact in enriched.knowledge_facts[:5]:
+            if fact:
+                parts.append(f"- {fact}")
+
+    return "\n".join(parts)
 
 
 async def _sse_generator(
     request: ChatRequest,
-    db: Session,
+    db: AsyncSession,
 ) -> AsyncGenerator[str, None]:
+    """Main streaming generator with full module pipeline."""
     session_id = request.session_id
     user_content = request.message.strip()
+    request_start = time.perf_counter()
 
     if not user_content:
         yield 'data: {"error": "Message cannot be empty"}\n\n'
         return
 
+    # ── STEP 1: Session Management ───────────────────────────
+    repo = SessionRepository(db)
+    profile_repo = ProfileRepository(db)
+
     if session_id:
-        session = db.get(SessionModel, session_id)
+        session = await repo.get_by_id(session_id, touch_access=False)
         if not session:
             yield 'data: {"error": "Session not found"}\n\n'
             return
     else:
-        session = SessionModel(
-            id=uuid7(),
-            title=user_content[:50] or "New Chat",
-            model=settings.MODEL_NAME,
+        from src.models.schemas import SessionCreate
+        session = await repo.create_session(
+            SessionCreate(title=user_content[:50] or "New Chat"),
+            active_model=settings.MODEL_NAME,
         )
-        db.add(session)
-        db.commit()
-        db.refresh(session)
         session_id = session.id
-        logger.info("Created new session %s for chat", session_id)
+        logger.info("Created new session %s", session_id)
 
-    user_msg = Message(
-        id=uuid7(),
-        session_id=session_id,
-        role="user",
-        content=user_content,
+    # ── STEP 2: Save User Message ────────────────────────────
+    from src.models.schemas import MessageCreate
+    user_msg = await repo.add_message(
+        session, MessageCreate(role="user", content=user_content)
     )
-    db.add(user_msg)
-    db.commit()
     logger.debug("Saved user message %s in session %s", user_msg.id, session_id)
 
-    stmt = (
-        select(Message)
-        .where(Message.session_id == session_id)
-        .order_by(Message.created_at)
-        .limit(20)
-    )
-    history = db.execute(stmt).scalars().all()
+    # ── STEP 3: Load User Profile (cached for this request) ──
+    profile_row = await profile_repo.get_profile("default")
+    user_profile = profile_repo.to_domain(profile_row) if profile_row else None
 
-    messages: list[dict[str, str]] = [
-        {"role": "system", "content": MOTU_SYSTEM_PROMPT}
-    ]
-    messages += [{"role": m.role, "content": m.content} for m in history]
+    # ── STEP 4: Planner + Router (Parallel Modules) ──────────
+    planner = QueryPlanner()
+    decision = await planner.plan(user_content, session_id)
 
+    router = ModuleRouter(db, user_profile)
+    enriched = await router.route(decision, user_content, session_id)
+
+    # ── STEP 5: Build Final System Prompt ────────────────────
+    final_system = await _build_system_prompt(enriched)
+
+    # ── STEP 6: Construct Message Payload for Ollama ─────────
+    # Use structured messages format (role/content) for /api/chat
+    messages: list[dict[str, str]] = [{"role": "system", "content": final_system}]
+    
+    # Add conversation history from Context module
+    if enriched.conversation_history:
+        messages.extend(enriched.conversation_history)
+    else:
+        # Fallback: fetch recent messages directly
+        recent = await repo.get_recent_messages(session_id, limit=10)
+        messages.extend([{"role": m.role, "content": m.content} for m in recent])
+
+    # Add current user message
+    messages.append({"role": "user", "content": user_content})
+
+    # ── STEP 7: Stream to Ollama ─────────────────────────────
+    # SSE starts HERE — the user sees the first token as soon as
+    # Ollama responds. All prior steps (DB, modules) happen before
+    # this yield, but they are optimized to be <50ms total.
+    
     assistant_content = ""
-    assistant_msg_id = uuid7()
+    assistant_msg_id = None  # Will be generated after streaming
 
     try:
-        async for token in stream_chat(messages, model=session.model, system=MOTU_SYSTEM_PROMPT):
+        # Send first SSE event immediately to establish connection
+        yield 'data: {"type": "start"}\n\n'
+
+        async for token in ollama_client.chat_stream(
+            messages=messages,
+            model=session.active_model or settings.MODEL_NAME,
+            temperature=0.7,
+        ):
             assistant_content += token
-            yield f'data: {{"token": {json.dumps(token)}}}\n\n'
+            yield f'data: {{"type": "token", "content": {json.dumps(token)}}}\n\n'
+
     except Exception as e:
         logger.error("Ollama streaming error: %s", e)
-        yield 'data: {"error": "Failed to get response from Ollama"}\n\n'
+        yield f'data: {{"type": "error", "message": "Failed to get response from Ollama"}}\n\n'
         return
 
+    # ── STEP 8: Save Assistant Message ───────────────────────
     from datetime import datetime, timezone
-
-    assistant_msg = Message(
-        id=assistant_msg_id,
-        session_id=session_id,
-        role="assistant",
-        content=assistant_content,
+    assistant_msg = await repo.add_message(
+        session,
+        MessageCreate(role="assistant", content=assistant_content),
     )
-    db.add(assistant_msg)
+    assistant_msg_id = assistant_msg.id
     session.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    logger.info("Saved assistant message %s in session %s", assistant_msg_id, session_id)
+    await repo.update_session(session)
 
-    yield f'data: {{"done": true, "session_id": "{session_id}", "message_id": "{assistant_msg_id}"}}\n\n'
+    total_latency = (time.perf_counter() - request_start) * 1000
+    logger.info(
+        "Chat completed: session=%s, msg=%s, latency=%.2fms",
+        session_id, assistant_msg_id, total_latency
+    )
+
+    # Final SSE event with metadata
+    yield json.dumps({
+        "type": "done",
+        "session_id": session_id,
+        "message_id": assistant_msg_id,
+        "latency_ms": round(total_latency, 2),
+    }) + "\n\n"
 
 
 @router.post("/chat/stream")
 async def chat_stream(
     request: ChatRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
+    """Stream chat response with full module pipeline."""
     logger.info("Chat stream request: session_id=%s", request.session_id)
     return StreamingResponse(
         _sse_generator(request, db),

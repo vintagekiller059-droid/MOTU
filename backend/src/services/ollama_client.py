@@ -22,8 +22,8 @@ class OllamaClient:
             timeout = httpx.Timeout(connect=5.0, read=300.0, write=300.0, pool=10.0)
             limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
             self._client = httpx.AsyncClient(
-                base_url=self.base_url, 
-                timeout=timeout, 
+                base_url=self.base_url,
+                timeout=timeout,
                 limits=limits
             )
         return self._client
@@ -58,10 +58,62 @@ class OllamaClient:
             logger.error(f"Error connecting to Ollama on /api/tags: {e}")
             return []
 
+    # ═══════════════════════════════════════════════════════════════
+    # NEW: Structured message-based streaming (preferred method)
+    # ═══════════════════════════════════════════════════════════════
+    async def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        temperature: float = 0.7,
+    ) -> AsyncGenerator[str, None]:
+        """Stream using Ollama's /api/chat endpoint with structured messages.
+        
+        This is the modern approach — sends structured role/content messages
+        instead of a flat prompt string. Better for conversation context.
+        """
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            "options": {"temperature": temperature}
+        }
+
+        client = self._get_client()
+
+        try:
+            async with client.stream("POST", "/api/chat", json=payload) as response:
+                if response.status_code != 200:
+                    yield f"[Error: Ollama status {response.status_code}]"
+                    return
+
+                async for line in response.aiter_lines():
+                    if line:
+                        try:
+                            chunk = json.loads(line)
+                            # /api/chat returns message.content instead of response
+                            token = chunk.get("message", {}).get("content", "")
+                            if token:
+                                yield token
+                            # Check for done signal
+                            if chunk.get("done", False):
+                                break
+                        except json.JSONDecodeError:
+                            continue
+        except (httpx.TransportError, httpx.HTTPError) as e:
+            logger.error(f"Ollama connection dropped during chat: {e}")
+            yield "\n[Error: Ollama service disconnected mid-generation]"
+        except Exception as e:
+            logger.error(f"Unexpected chat streaming exception: {e}")
+            yield f"\n[Stream Error: {str(e)}]"
+
+    # ═══════════════════════════════════════════════════════════════
+    # LEGACY: Flat prompt string streaming (kept for compatibility)
+    # ═══════════════════════════════════════════════════════════════
     async def generate_stream(
-        self, 
-        prompt: str, 
-        model: str, 
+        self,
+        prompt: str,
+        model: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.7
     ) -> AsyncGenerator[str, None]:
