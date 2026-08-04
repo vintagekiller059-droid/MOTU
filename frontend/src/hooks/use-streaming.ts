@@ -1,4 +1,3 @@
-// frontend/src/hooks/useStreaming.ts
 import { useState, useCallback, useRef } from 'react';
 import { useSessionStore } from '../stores/session-store';
 import { useCoreStore } from '../stores/core-store';
@@ -14,62 +13,31 @@ export const useStreaming = () => {
   const appendToken = useSessionStore((s) => s.appendToken);
   const finalizeMessage = useSessionStore((s) => s.finalizeMessage);
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
+  const setActiveModules = useCoreStore((s) => s.setActiveModules);
+  const setPhase = useCoreStore((s) => s.setPhase);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!currentSessionId) {
-      setError('No active session');
-      return;
-    }
+    if (!currentSessionId) { setError('No active session'); return; }
 
     setIsStreaming(true);
     setError(null);
 
-    // Add user message immediately
-    addMessage({
-      id: crypto.randomUUID(),
-      role: 'user',
-      content,
-      timestamp: Date.now(),
-    });
+    addMessage({ id: crypto.randomUUID(), role: 'user', content, timestamp: Date.now() });
 
-    // Trigger neural module activation based on query
-    useCoreStore.getState().triggerModules(content);
-
-    // Create placeholder assistant message for streaming
     const assistantMessageId = crypto.randomUUID();
-    addMessage({
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-      timestamp: Date.now(),
-    });
-
-    console.log('[MOTU] ✓ SSE connected');
+    addMessage({ id: assistantMessageId, role: 'assistant', content: '', isStreaming: true, timestamp: Date.now() });
 
     try {
       abortRef.current = new AbortController();
-
-      const response = await fetch(`${API_BASE}/api/chat/stream`, {
+      const response = await fetch(`${API_BASE}/api/v1/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-        },
-        body: JSON.stringify({
-          session_id: currentSessionId,
-          message: content,
-        }),
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+        body: JSON.stringify({ session_id: currentSessionId, message: content }),
         signal: abortRef.current.signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (!response.body) {
-        throw new Error('No response body');
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (!response.body) throw new Error('No response body');
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -80,58 +48,39 @@ export const useStreaming = () => {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-
-        // Process SSE events from buffer
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const jsonStr = line.slice(5).trim();
-            if (!jsonStr) continue;
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
 
-            try {
-              const event = JSON.parse(jsonStr);
-              console.log('[MOTU] ✓ Token received:', event);
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr) continue;
 
-              if (event.token !== undefined) {
-                appendToken(assistantMessageId, event.token);
-                console.log('[MOTU] ✓ Store updated');
-              }
+          try {
+            const event = JSON.parse(jsonStr);
+            console.log('[MOTU] SSE:', event);
 
-              if (event.done) {
-                console.log('[MOTU] ✓ Stream finished');
-                finalizeMessage(assistantMessageId);
-              }
-            } catch (parseErr) {
-              console.warn('[MOTU] Failed to parse SSE data:', jsonStr);
+            if (event.phase === 'activating' && event.modules) {
+              setActiveModules(event.modules);
+              setPhase('activating');
             }
-          }
-        }
-      }
+            if (event.phase === 'transmitting') setPhase('transmitting');
+            if (event.phase === 'core-processing') setPhase('core-processing');
+            if (event.phase === 'answering') setPhase('answering');
+            if (event.phase === 'idle') setPhase('idle');
 
-      // Flush remaining buffer
-      if (buffer.trim()) {
-        const lines = buffer.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const jsonStr = line.slice(5).trim();
-            if (!jsonStr) continue;
-            try {
-              const event = JSON.parse(jsonStr);
-              if (event.token !== undefined) {
-                appendToken(assistantMessageId, event.token);
-              }
-              if (event.done) {
-                finalizeMessage(assistantMessageId);
-              }
-            } catch { /* ignore */ }
+            if (event.token !== undefined) appendToken(assistantMessageId, event.token);
+            if (event.done) { if (event.timings) console.log('[MOTU] Timings:', event.timings); finalizeMessage(assistantMessageId); }
+            if (event.error) { setError(event.error); finalizeMessage(assistantMessageId); }
+          } catch (parseErr) {
+            console.warn('[MOTU] Parse error:', jsonStr);
           }
         }
       }
 
       finalizeMessage(assistantMessageId);
-
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         console.log('[MOTU] Stream aborted');
@@ -143,12 +92,11 @@ export const useStreaming = () => {
     } finally {
       setIsStreaming(false);
       abortRef.current = null;
+      setPhase('idle');
     }
-  }, [currentSessionId, addMessage, appendToken, finalizeMessage]);
+  }, [currentSessionId, addMessage, appendToken, finalizeMessage, setActiveModules, setPhase]);
 
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-  }, []);
+  const abort = useCallback(() => { abortRef.current?.abort(); }, []);
 
   return { sendMessage, isStreaming, error, abort };
 };

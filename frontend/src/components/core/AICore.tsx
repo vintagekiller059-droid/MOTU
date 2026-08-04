@@ -38,10 +38,8 @@ export const AICore: React.FC = memo(() => {
     const mode = currentMode;
     const prev = prevModeRef.current;
 
-       // User just sent a message → enter thinking
-    if (prev !== 'thinking' && mode === 'thinking') {
-      setPhase('activating');
-    }
+       // Backend drives all phase transitions via SSE.
+    // We only use mode changes for idle cleanup here.
     // Backend started streaming → enter speaking
     if (prev !== 'speaking' && mode === 'speaking') {
       setPhase('answering');
@@ -83,21 +81,10 @@ export const AICore: React.FC = memo(() => {
     };
   }, [currentMode, activeModules, setPhase]);
 
-  // === PHASE TRANSITION: transmitting → core-processing ===
-  // When any pulse gets close to center, switch phase
-  useEffect(() => {
-    if (signalPhase !== 'transmitting') return;
-
-    const check = setInterval(() => {
-      const hasNearCore = pulsesRef.current.some((p) => p.t > 0.75 && p.t < 1.0);
-      if (hasNearCore) {
-        setPhase('core-processing');
-        clearInterval(check);
-      }
-    }, 80);
-
-    return () => clearInterval(check);
-  }, [signalPhase, setPhase]);
+  // === PHASE: transmitting → core-processing ===
+  // REMOVED: auto-transition based on pulse position.
+  // Now driven by backend SSE events (RightPanel calls setPhase).
+  // Pulses keep spawning while signalPhase === 'transmitting'.
 
   // === MAIN CANVAS DRAW LOOP — YOUR EXISTING CODE, PRESERVED ===
   useEffect(() => {

@@ -3,6 +3,7 @@ import { useChatStore } from '../stores/app-store';
 import { useUIStore } from '../stores/ui-store';
 import { useSystemStore } from '../stores/system-store';
 import { apiClient } from '../lib/api-client';
+import { useCoreStore } from '../stores/core-store';
 
 // ── Memoized Message Bubble ──
 const MessageBubble = memo(({ msg }: { msg: { id: string; sender: 'user' | 'motu'; text: string; timestamp: string } }) => {
@@ -98,6 +99,7 @@ export const RightPanel: React.FC = () => {
   } = useChatStore();
 
   const { setMode, backendOnline, ollamaOnline } = useUIStore();
+  const { setActiveModules, setPhase, reset: resetCore } = useCoreStore();
   const { cpuUsage, ramUsage } = useSystemStore();
 
   const [input, setInput] = useState('');
@@ -130,7 +132,7 @@ export const RightPanel: React.FC = () => {
     setShouldAutoScroll(isAtBottom);
   }, []);
 
-  const handleSend = useCallback(async () => {
+    const handleSend = useCallback(async () => {
     // Prevent double submission
     if (isSendingRef.current) return;
     if (!input.trim() || isStreaming) return;
@@ -202,6 +204,27 @@ export const RightPanel: React.FC = () => {
           try {
             const event = JSON.parse(jsonStr);
 
+            // ── BACKEND-DRIVEN PHASE EVENTS ──
+            if (event.phase) {
+              setPhase(event.phase);
+              if (event.phase === 'activating' && event.modules) {
+                setActiveModules(event.modules);
+                console.log('[MOTU] Backend modules:', event.modules, 'reasoning:', event.reasoning);
+              }
+              if (event.phase === 'transmitting' || event.phase === 'core-processing') {
+                setMode('thinking');
+              }
+              if (event.phase === 'answering') {
+                setMode('speaking');
+              }
+              if (event.phase === 'idle') {
+                setMode('idle');
+                resetCore();
+              }
+              continue;
+            }
+
+            // ── ERROR ──
             if (event.error) {
               addMessage({
                 id: `error-${Date.now()}`,
@@ -212,11 +235,12 @@ export const RightPanel: React.FC = () => {
               break;
             }
 
-            // Handle token
+            // ── TOKEN ──
             if (event.token !== undefined && event.token !== null) {
               if (!hasReceivedToken) {
                 hasReceivedToken = true;
                 setMode('speaking');
+                setPhase('answering');
                 assistantMsgId = `assistant-${Date.now()}`;
                 addMessage({
                   id: assistantMsgId,
@@ -230,10 +254,13 @@ export const RightPanel: React.FC = () => {
               }
             }
 
-            // Handle completion
+            // ── DONE ──
             if (event.done) {
               if (event.session_id) {
                 setCurrentSessionId(event.session_id);
+              }
+              if (event.timings) {
+                console.log('[MOTU] Backend timings:', event.timings);
               }
               break;
             }
@@ -256,9 +283,9 @@ export const RightPanel: React.FC = () => {
       setIsStreaming(false);
       setStreamingMessageId(null);
       setMode('idle');
+      resetCore();
     }
-  }, [input, isStreaming, currentSessionId, setMode, setIsStreaming, setCurrentSessionId, setStreamingMessageId, addMessage, appendToMessage, setShouldAutoScroll]);
-
+  }, [input, isStreaming, currentSessionId, setMode, setIsStreaming, setCurrentSessionId, setStreamingMessageId, addMessage, appendToMessage, setShouldAutoScroll, setActiveModules, setPhase, resetCore]);
   // Handle suggestion click
   const handleSuggestion = useCallback((text: string) => {
     setInput(text);

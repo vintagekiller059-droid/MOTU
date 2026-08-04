@@ -21,3 +21,5 @@ class EnrichedContext:
     memory_snippets: List[Dict[str, Any]] = field(default_factory=list)
     knowledge_facts: List[str] = field(default_factory=list)
     conversation_history: List[Dict[str, str]] = field(default_factory=list)
+    active_modules: List[str] = field(default_factory=list)
+    module_timings: Dict[str, float] = field(default_factory=dict)
