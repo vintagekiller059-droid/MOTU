@@ -113,8 +113,14 @@ async def _sse_generator(
     if session_id:
         session = await repo.get_by_id(session_id, touch_access=False)
         if not session:
-            yield 'data: {"error": "Session not found"}\n\n'
-            return
+            # Session not found in DB — create a new one instead of failing
+            from src.models.schemas import SessionCreate
+            session = await repo.create_session(
+                SessionCreate(title=user_content[:50] or "New Chat"),
+                active_model=settings.MODEL_NAME,
+            )
+            session_id = session.id
+            logger.info("Created new session %s (previous ID not found)", session_id)
     else:
         from src.models.schemas import SessionCreate
         session = await repo.create_session(
@@ -131,61 +137,51 @@ async def _sse_generator(
     )
     logger.debug("Saved user message %s in session %s", user_msg.id, session_id)
 
-    # ── STEP 3: Load User Profile (cached for this request) ──
+    # ── STEP 3: Load User Profile ──
     profile_row = await profile_repo.get_profile("default")
     user_profile = profile_repo.to_domain(profile_row) if profile_row else None
 
-    # ── STEP 4: Planner + Router (Parallel Modules) ──────────
+    # ── STEP 4: Planner + Router ──
     planner = QueryPlanner()
     decision = await planner.plan(user_content, session_id)
 
     router = ModuleRouter(db, user_profile)
     enriched = await router.route(decision, user_content, session_id)
 
-    # ── STEP 5: Build Final System Prompt ────────────────────
+    # ── STEP 5: Build Final System Prompt ──
     final_system = await _build_system_prompt(enriched)
 
-    # ── STEP 6: Construct Message Payload for Ollama ─────────
-    # Use structured messages format (role/content) for /api/chat
+    # ── STEP 6: Construct Message Payload for Ollama ──
     messages: list[dict[str, str]] = [{"role": "system", "content": final_system}]
     
-    # Add conversation history from Context module
     if enriched.conversation_history:
         messages.extend(enriched.conversation_history)
     else:
-        # Fallback: fetch recent messages directly
         recent = await repo.get_recent_messages(session_id, limit=10)
         messages.extend([{"role": m.role, "content": m.content} for m in recent])
 
-    # Add current user message
     messages.append({"role": "user", "content": user_content})
 
-    # ── STEP 7: Stream to Ollama ─────────────────────────────
-    # SSE starts HERE — the user sees the first token as soon as
-    # Ollama responds. All prior steps (DB, modules) happen before
-    # this yield, but they are optimized to be <50ms total.
-    
+    # ── STEP 7: Stream to Ollama ──
     assistant_content = ""
-    assistant_msg_id = None  # Will be generated after streaming
+    assistant_msg_id = None
 
     try:
-        # Send first SSE event immediately to establish connection
-        yield 'data: {"type": "start"}\n\n'
-
         async for token in ollama_client.chat_stream(
             messages=messages,
             model=session.active_model or settings.MODEL_NAME,
             temperature=0.7,
         ):
             assistant_content += token
-            yield f'data: {{"type": "token", "content": {json.dumps(token)}}}\n\n'
+            # Frontend expects: {"token": "hello world"}
+            yield f'data: {{"token": {json.dumps(token)}}}\n\n'
 
     except Exception as e:
         logger.error("Ollama streaming error: %s", e)
-        yield f'data: {{"type": "error", "message": "Failed to get response from Ollama"}}\n\n'
+        yield f'data: {{"error": "Failed to get response from Ollama"}}\n\n'
         return
 
-    # ── STEP 8: Save Assistant Message ───────────────────────
+    # ── STEP 8: Save Assistant Message ──
     from datetime import datetime, timezone
     assistant_msg = await repo.add_message(
         session,
@@ -201,15 +197,13 @@ async def _sse_generator(
         session_id, assistant_msg_id, total_latency
     )
 
-    # Final SSE event with metadata
-    yield json.dumps({
-        "type": "done",
+    # Final SSE event — frontend expects: {"done": true, "session_id": "..."}
+    yield 'data: ' + json.dumps({
+        "done": True,
         "session_id": session_id,
         "message_id": assistant_msg_id,
         "latency_ms": round(total_latency, 2),
     }) + "\n\n"
-
-
 @router.post("/chat/stream")
 async def chat_stream(
     request: ChatRequest,
