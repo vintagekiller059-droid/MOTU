@@ -146,7 +146,7 @@ All placeholder files remain untouched:
 ## Design Decisions
 
 ### Why SVG + CSS instead of Canvas/WebGL?
-- **Lighter**: No JS animation loop. No context creation overhead.
+- **Lighter**: No JS animation loop. No Understanding  creation overhead.
 - **Sharper**: SVG scales perfectly at all resolutions.
 - **Accessible**: Screen readers ignore decorative SVG. Reduced motion works natively.
 - **Maintainable**: Pure markup + CSS. No shader code.

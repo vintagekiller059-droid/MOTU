@@ -1,6 +1,7 @@
 // frontend/src/hooks/useStreaming.ts
 import { useState, useCallback, useRef } from 'react';
 import { useSessionStore } from '../stores/session-store';
+import { useCoreStore } from '../stores/core-store';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -30,6 +31,9 @@ export const useStreaming = () => {
       content,
       timestamp: Date.now(),
     });
+
+    // Trigger neural module activation based on query
+    useCoreStore.getState().triggerModules(content);
 
     // Create placeholder assistant message for streaming
     const assistantMessageId = crypto.randomUUID();
