@@ -18,6 +18,8 @@ interface ChatUIProps {
   onScroll: () => void;
   backendOnline?: boolean;
   ollamaOnline?: boolean;
+  cpuPercent?: number;
+  ramPercent?: number;
 }
 
 // Arc Gauge for CPU & RAM
@@ -26,7 +28,7 @@ const CpuRamGauge: React.FC<{
   value: string;
   percent: number;
 }> = ({ label, value, percent }) => (
-  <div className="flex items-center gap-1.5 shrink-0">
+  <div className="flex items-center gap-1 shrink-0">
     <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
         <path
@@ -47,9 +49,9 @@ const CpuRamGauge: React.FC<{
         />
       </svg>
     </div>
-    <div className="flex flex-col leading-none font-mono">
-      <span className="text-slate-400 text-[8px] font-semibold">{label}</span>
-      <span className="font-bold text-slate-200 text-[9px] mt-0.5">{value}</span>
+    <div className="flex flex-col leading-tight font-mono justify-center">
+      <span className="text-slate-400 text-[8px] font-semibold whitespace-nowrap">{label}</span>
+      <span className="font-bold text-slate-200 text-[8.5px] whitespace-nowrap">{value}</span>
     </div>
   </div>
 );
@@ -67,10 +69,10 @@ const StatusDot: React.FC<{
           : 'bg-red-500/80 shadow-[0_0_6px_rgba(239,68,68,0.5)]'
       }`}
     />
-    <div className="flex flex-col leading-none font-mono">
-      <span className="text-slate-400 text-[8px] font-semibold">{label}</span>
+    <div className="flex flex-col leading-tight font-mono justify-center">
+      <span className="text-slate-400 text-[8px] font-semibold whitespace-nowrap">{label}</span>
       <span
-        className={`text-[8.5px] font-bold mt-0.5 ${
+        className={`text-[8.5px] font-bold whitespace-nowrap ${
           isOnline ? 'text-[#00e5ff]' : 'text-red-400/90'
         }`}
       >
@@ -91,6 +93,8 @@ export const ChatUI: React.FC<ChatUIProps> = ({
   onScroll,
   backendOnline = false,
   ollamaOnline = false,
+  cpuPercent = 0,
+  ramPercent = 0,
 }) => {
   return (
     /* ── OUTER FRAME ── */
@@ -121,17 +125,17 @@ export const ChatUI: React.FC<ChatUIProps> = ({
           </h1>
         </div>
 
-        {/* System Status Pill (Loading Bar Removed) */}
-        <div className="w-full py-2 px-3.5 border-t border-l border-sky-400/20 border-b border-r border-sky-900/30 rounded-2xl bg-[#081520]/70 backdrop-blur-md flex items-center justify-between gap-1 overflow-x-auto shadow-[0_6px_16px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[9px] font-mono text-slate-300 font-bold tracking-wider">
+        {/* System Status Pill */}
+        <div className="w-full py-2 px-3 border-t border-l border-sky-400/20 border-b border-r border-sky-900/30 rounded-2xl bg-[#081520]/70 backdrop-blur-md flex items-center justify-between gap-1 overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="flex items-center shrink-0">
+            <span className="text-[8px] font-mono text-slate-300 font-bold tracking-wider whitespace-nowrap">
               SYSTEM STATUS
             </span>
           </div>
 
-          <div className="flex items-center gap-3.5 shrink-0">
-            <CpuRamGauge label="CPU" value="12%" percent={12} />
-            <CpuRamGauge label="RAM" value="21%" percent={21} />
+          <div className="flex items-center gap-2 shrink-0">
+            <CpuRamGauge label="CPU" value={`${Math.round(cpuPercent)}%`} percent={cpuPercent} />
+            <CpuRamGauge label="RAM" value={`${Math.round(ramPercent)}%`} percent={ramPercent} />
             <StatusDot label="Backend" isOnline={backendOnline} />
             <StatusDot label="Ollama" isOnline={ollamaOnline} />
           </div>
@@ -178,7 +182,7 @@ export const ChatUI: React.FC<ChatUIProps> = ({
                   )}
                 </div>
 
-                <div className="text-[12px] leading-relaxed text-slate-200 font-sans pt-0.5">
+                <div className="text-[12px] leading-relaxed text-slate-200 font-sans pt-0.5 whitespace-pre-wrap">
                   {msg.text}
                 </div>
               </div>

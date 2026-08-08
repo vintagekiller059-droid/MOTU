@@ -23,13 +23,52 @@ export const RightPanel: React.FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-  // Safety reset
+  // Dynamic system metrics state
+  const [backendOnline, setBackendOnline] = useState(false);
+  const [ollamaOnline, setOllamaOnline] = useState(false);
+  const [cpuPercent, setCpuPercent] = useState(0);
+  const [ramPercent, setRamPercent] = useState(0);
+
+  // Poll system health via apiClient.health()
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkSystemStatus = async () => {
+      try {
+        const healthData = await apiClient.health();
+
+        if (isMounted && healthData) {
+          setBackendOnline(true);
+          setOllamaOnline(Boolean(healthData.ollamaConnected));
+          setCpuPercent(Number(healthData.cpuPercent ?? 0));
+          setRamPercent(Number(healthData.memoryPercent ?? 0));
+        }
+      } catch {
+        if (isMounted) {
+          setBackendOnline(false);
+          setOllamaOnline(false);
+          setCpuPercent(0);
+          setRamPercent(0);
+        }
+      }
+    };
+
+    checkSystemStatus();
+    const interval = setInterval(checkSystemStatus, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Reset streaming state on component mount
   useEffect(() => {
     setIsStreaming(false);
     setMode('idle');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setIsStreaming, setMode]);
 
-  // Auto-scroll
+  // Auto-scroll logic
   useEffect(() => {
     if (shouldAutoScroll && chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -66,105 +105,165 @@ export const RightPanel: React.FC = () => {
       setMode('thinking');
       setShouldAutoScroll(true);
 
+      const controller = new AbortController();
+      // Timeout safety: Cancel request after 30 seconds if it hangs
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       try {
-        const response = await fetch(apiClient.streamChatUrl(), {
+        const streamUrl =
+          typeof apiClient.streamChatUrl === 'function'
+            ? apiClient.streamChatUrl()
+            : '/api/v1/chat/stream';
+
+        const response = await fetch(streamUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Accept: 'text/event-stream',
+            Accept: 'text/event-stream, application/json',
           },
           body: JSON.stringify({
             session_id: currentSessionId,
             message: userText,
           }),
+          signal: controller.signal,
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        clearTimeout(timeoutId);
 
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('No response body');
+        if (!response.ok) {
+          throw new Error(`Server returned status HTTP ${response.status}`);
+        }
 
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let assistantMsgId: string | null = null;
-        let hasReceivedToken = false;
+        const contentType = response.headers.get('content-type') || '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        // Standard JSON Fallback Handling
+        if (contentType.includes('application/json')) {
+          const jsonRes = await response.json();
+          const assistantMsgId = `assistant-${Date.now()}`;
+          const responseText =
+            jsonRes.response || jsonRes.message || jsonRes.text || 'No response';
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+          if (jsonRes.session_id) {
+            setCurrentSessionId(jsonRes.session_id);
+          }
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data: ')) continue;
+          addMessage({
+            id: assistantMsgId,
+            sender: 'motu',
+            text: responseText,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          });
+        } else {
+          // Streaming Response Parsing
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error('No response stream available');
 
-            const jsonStr = trimmed.slice(6);
-            if (jsonStr === '[DONE]') continue;
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let assistantMsgId: string | null = null;
+          let hasReceivedToken = false;
 
-            try {
-              const event = JSON.parse(jsonStr);
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
 
-              if (event.error) {
-                addMessage({
-                  id: `error-${Date.now()}`,
-                  sender: 'motu',
-                  text: `Error: ${event.error}`,
-                  timestamp: new Date().toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                });
-                break;
-              }
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
 
-              if (event.token !== undefined) {
-                if (!hasReceivedToken) {
-                  hasReceivedToken = true;
-                  setMode('speaking');
-                  assistantMsgId = `assistant-${Date.now()}`;
-                  addMessage({
-                    id: assistantMsgId,
-                    sender: 'motu',
-                    text: event.token,
-                    timestamp: new Date().toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }),
-                  });
-                  setStreamingMessageId(assistantMsgId);
-                } else {
-                  appendToMessage(assistantMsgId, event.token);
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('data: ')) continue;
+
+                const jsonStr = trimmed.slice(6);
+                if (jsonStr === '[DONE]') break;
+
+                try {
+                  const event = JSON.parse(jsonStr);
+
+                  if (event.error) {
+                    throw new Error(event.error);
+                  }
+
+                  const token =
+                    event.token ??
+                    event.content ??
+                    event.response ??
+                    (typeof event === 'string' ? event : undefined);
+
+                  if (token !== undefined) {
+                    if (!hasReceivedToken) {
+                      hasReceivedToken = true;
+                      setMode('speaking');
+                      assistantMsgId = `assistant-${Date.now()}`;
+                      addMessage({
+                        id: assistantMsgId,
+                        sender: 'motu',
+                        text: token,
+                        timestamp: new Date().toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }),
+                      });
+                      setStreamingMessageId(assistantMsgId);
+                    } else if (assistantMsgId) {
+                      appendToMessage(assistantMsgId, token);
+                    }
+                  }
+
+                  if (event.done && event.session_id) {
+                    setCurrentSessionId(event.session_id);
+                  }
+                } catch {
+                  // Fallback for raw non-JSON text stream
+                  if (!hasReceivedToken) {
+                    hasReceivedToken = true;
+                    setMode('speaking');
+                    assistantMsgId = `assistant-${Date.now()}`;
+                    addMessage({
+                      id: assistantMsgId,
+                      sender: 'motu',
+                      text: jsonStr,
+                      timestamp: new Date().toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }),
+                    });
+                    setStreamingMessageId(assistantMsgId);
+                  } else if (assistantMsgId) {
+                    appendToMessage(assistantMsgId, jsonStr);
+                  }
                 }
               }
-
-              if (event.done) {
-                if (event.session_id) {
-                  setCurrentSessionId(event.session_id);
-                }
-                break;
-              }
-            } catch {
-              // Ignore malformed lines
             }
+          } finally {
+            reader.releaseLock();
           }
         }
-      } catch (err) {
+      } catch (err: any) {
+        const errorMessage =
+          err.name === 'AbortError'
+            ? 'Response timed out. Please try sending your message again.'
+            : err instanceof Error
+            ? err.message
+            : 'Connection failed. Is the backend running?';
+
         addMessage({
           id: `error-${Date.now()}`,
           sender: 'motu',
-          text:
-            err instanceof Error
-              ? err.message
-              : 'Connection failed. Is the backend running?',
+          text: errorMessage,
           timestamp: new Date().toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
           }),
         });
       } finally {
+        // ALWAYS re-enable the user input and reset modes
+        clearTimeout(timeoutId);
         setIsStreaming(false);
         setStreamingMessageId(null);
         setMode('idle');
@@ -180,12 +279,10 @@ export const RightPanel: React.FC = () => {
       setStreamingMessageId,
       addMessage,
       appendToMessage,
-      setShouldAutoScroll,
     ]
   );
 
   return (
-    /* Strictly fixes the 380px width & right side alignment WITHOUT border lines */
     <aside className="w-[380px] min-w-[380px] max-w-[380px] h-full bg-transparent flex flex-col p-3 z-20 shrink-0 box-border overflow-hidden">
       <ChatUI
         messages={messages}
@@ -196,8 +293,10 @@ export const RightPanel: React.FC = () => {
         chatContainerRef={chatContainerRef}
         chatEndRef={chatEndRef}
         onScroll={handleScroll}
-        backendOnline={false}
-        ollamaOnline={false}
+        backendOnline={backendOnline}
+        ollamaOnline={ollamaOnline}
+        cpuPercent={cpuPercent}
+        ramPercent={ramPercent}
       />
     </aside>
   );
