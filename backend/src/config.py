@@ -15,6 +15,13 @@ class Settings:
     DATABASE_PATH: Path = Path("./motu.db")
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: List[str] = field(default_factory=list)
+        # Cognitive Kernel v3 settings
+    ENABLE_FAST_PATH: bool = True          # Skip modules for greetings/social
+    MAX_MODULE_LATENCY_MS: float = 1500.0  # Tighter timeout
+    CONTEXT_WINDOW_MINIMAL: int = 4        # Messages for simple queries
+    CONTEXT_WINDOW_LOW: int = 6
+    CONTEXT_WINDOW_MEDIUM: int = 10
+    CONTEXT_WINDOW_HIGH: int = 14
 
     # Module system settings
     ENABLE_MEMORY: bool = True

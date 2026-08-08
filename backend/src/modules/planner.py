@@ -131,30 +131,15 @@ class QueryPlanner:
         if reasoning_score > 0:
             modules.add("reasoning")
             reasoning_parts.append(f"Analytical/reasoning language detected (score={reasoning_score}) → Reasoning")
-
         # ── FALLBACKS ──
-        # Ensure at least 2 modules for rich pipeline visualization
-        if len(modules) == 0:
-            modules.update(["knowledge", "reasoning"])
-            reasoning_parts.append("No strong signals → default Knowledge + Reasoning")
-        elif len(modules) == 1:
-            if "memory" in modules:
-                modules.add("context")
-                reasoning_parts.append("Memory alone → add Context for conversation continuity")
-            elif "context" in modules:
-                modules.add("memory")
-                reasoning_parts.append("Context alone → add Memory for user identity")
-            elif "knowledge" in modules:
-                modules.add("reasoning")
-                reasoning_parts.append("Knowledge alone → add Reasoning for structured answer")
-            elif "reasoning" in modules:
-                modules.add("knowledge")
-                reasoning_parts.append("Reasoning alone → add Knowledge for factual grounding")
+        # No forced minimums — return exactly what the query signals
+        if not modules:
+            reasoning_parts.append("No strong signals detected")
 
         latency = (time.perf_counter() - t0) * 1000
         return PlannerDecision(
             modules=sorted(list(modules)),
-            reasoning="; ".join(reasoning_parts) if reasoning_parts else "General query",
+            reasoning="; ".join(reasoning_parts) if reasoning_parts else "General query — no specific modules needed",
             priority="high" if len(modules) >= 3 else "normal",
             latency_ms=round(latency, 3),
         )

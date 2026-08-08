@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sidebar } from './components/Sidebar';
-import { RightPanel } from './components/RightPanel';
+// ✅ CORRECT (Default import)
+import RightPanel from './components/RightPanel';
 import { BottomCards } from './components/BottomCards';
 import { AICore } from './components/core/AICore';
 import { NeuralSphere } from './components/core/NeuralSphere';

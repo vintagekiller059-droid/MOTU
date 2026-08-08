@@ -73,12 +73,12 @@ class OllamaClient:
         instead of a flat prompt string. Better for conversation context.
         """
         payload = {
-            "model": model,
-            "messages": messages,
-            "stream": True,
-            "options": {"temperature": temperature}
-        }
-
+    "model": model,
+    "messages": messages,
+    "stream": True,
+    "options": {"temperature": temperature},
+    "keep_alive": "1h"
+}
         client = self._get_client()
 
         try:

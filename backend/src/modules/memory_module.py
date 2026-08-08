@@ -42,7 +42,7 @@ class MemoryModule:
             "am", "is", "are", "was", "were", "be", "been", "being",
         }
         words = text.lower().split()
-        return {w.strip(".,!?;:"'()[]") for w in words if len(w) > 2 and w not in stopwords}
+        return {w.strip(".,!?;:\"'()[]") for w in words if len(w) > 2 and w not in stopwords}
 
     def _score_relevance(self, query_keywords: set[str], message_content: str) -> float:
         """Score how relevant a message is to the query (0.0–1.0)."""
